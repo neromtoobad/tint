@@ -1,5 +1,7 @@
 # Arbitrum Mentorship Program, Cohort 2: application draft
 
+> **Parked Nov 17 2026.** The user is launching Tint now and will build a different project for this programme. Kept for reference.
+
 Form: https://tally.so/r/Xx6xqO · closes **6 Dec 2026** · aim to submit **Dec 5**.
 
 These are the fields on page 1 of the form. Later pages only show after page 1 is filled, so add their questions here when you see them. Anything in [brackets] has to be true on the day you submit. Update it before pasting.
