@@ -4,6 +4,28 @@ Tint is a private stock wallet on Robinhood Chain. You hold dollars (USDG) and s
 
 Tagline idea: **"You can see out. They can't see in."**
 
+## Target: Arbitrum Mentorship Program, Cohort 2
+
+Source: https://mentorship.arbitrum.io (read Nov 17 2026). Run by Arbitrum Foundation and Offchain Labs **with Robinhood Chain**.
+
+| | |
+|---|---|
+| Applications close | **6 Dec 2026** (form: https://tally.so/r/Xx6xqO) |
+| Programme | 5 Jan 2027 → Demo Day 25 Mar 2027, 12 weeks, remote, ~4 h/week, full-time founders |
+| Prize | $100K for the top teams. Demo Day with 50+ investors |
+| Takes equity or tokens? | **No** |
+| Teams | Up to 15. Selection may include an interview and technical due diligence |
+| What they want | "Working prototype, testnet product or early mainnet deployment, not just a deck". Mainnet on Arbitrum One or Robinhood Chain within 6 months. Clear founder commitment |
+| They mentor on | Growth, fundraising, positioning, partnerships, product strategy, **tokenomics**, community, pitching |
+| Open House fast track | Singapore buildathon is "to be announced". Apply directly |
+
+What this changes for Tint:
+1. **Something live by 6 Dec.** The full private loop has to run on Robinhood Chain testnet (46630) from a public site and a public repo, not on a local fork only. Technical due diligence will read the code.
+2. **Lead with "privacy that works with rules".** Robinhood is a regulated broker and the programme is co-run with them. A dark wallet is a hard sell to them. A private wallet with viewing keys, tax export and (later) clean-funds proofs is the pitch. That makes the viewing key a launch feature, not a later one.
+3. **Use Arbitrum's own tech.** Stylus is live on Robinhood Chain (checked: `ArbWasm.stylusVersion()` = 3 on 4663 and 46630, ArbOS 116). Writing the Merkle tree and Poseidon hashing as a Stylus (Rust) contract makes every deposit much cheaper than Solidity. That is a concrete Arbitrum story for the reviewers.
+4. **Pitch it as a company, not a coin.** The programme is about fundraising and go-to-market, with investors at Demo Day. The application should show the business: who pays, how much, why now. $TINT is designed with the programme's tokenomics mentors and launched after the private pool is on mainnet, not before 6 Dec.
+5. **Two chains.** Stocks live on Robinhood Chain. Private USDC payments on Arbitrum One are the step after that, in the "state in 6 months" answer.
+
 ## What it does
 
 | Feature | From | What the user sees |
@@ -60,8 +82,9 @@ Note details are encrypted to the recipient off-circuit (X25519 + ChaCha20) and 
 
 Why Noir and not Circom: no trusted-setup ceremony for each circuit, faster to change, and the Solidity verifier comes out of `bb`. UltraHonk costs ~4M gas to verify (Rooq's number). At 0.02 gwei that's ~0.00008 ETH, about 25¢. If that's too much, switching `transact` to Groth16 is a contained change.
 
-**Contracts (Foundry):**
-- `TintPool`: Merkle tree (LeanIMT, Poseidon2), nullifier set, verifiers, token custody, Uniswap v3 swap adapter, fee to treasury.
+**Contracts (Foundry + Stylus):**
+- `TintPool` (Solidity): nullifier set, verifiers, token custody, Uniswap v3 swap adapter, fee to treasury.
+- `TintTree` (Stylus, Rust): the note Merkle tree and Poseidon2 hashing that `TintPool` calls. Rust is installed with the wasm32 target. `cargo-stylus` still needs installing. A Solidity tree stays in the tests as a reference, to prove both give the same root.
 - Allowed assets list (USDG + the stocks above), owner-controlled at first.
 - Per-deposit cap (e.g. $1,000) and a pool-wide cap until an audit. Pause on deposits only; withdrawals always open.
 
@@ -74,22 +97,38 @@ Why Noir and not Circom: no trusted-setup ceremony for each circuit, faster to c
 - Fair launch on a Robinhood Chain launchpad (Orynth or Pons), locked LP, no team allocation.
 - 0.25% on private swaps and 0.1% on unshields go to a treasury, which buys back $TINT on a public schedule with tx links. Half the buyback is burned.
 - Holding $TINT lowers your fee. Holders vote on which stock gets added next.
-- Launch after the private pool is live on mainnet with real users, not before. Rooq and Gloam both launched with a working product.
+- Launch after the private pool is live on mainnet with real users, not before. Rooq and Gloam both launched with a working product. For the Arbitrum programme: don't launch before applying. A small pump-style token makes a weaker first impression on reviewers and investors than a live product. The programme takes no tokens, so launching later costs nothing.
 
 ## Phases
 
-| # | What | Done when |
-|---|---|---|
-| 0 | Install Noir (`noirup`) + `bb`. Register **tint.trade** and **@tinttrade** | `nargo --version` works, handle is yours |
-| 1 | `transact` circuit + `TintPool` + tests on a local fork of Robinhood mainnet | Shield → send → unshield passes in `forge test` with real proofs |
-| 2 | `swap` circuit + Uniswap adapter | Private USDG → NVDA → USDG round trip on the fork, with real pool prices |
-| 3 | Web wallet: keys, scanning, send, payment links, trade | The full loop works in the browser against the fork |
-| 4 | Relayer + viewing key + CSV tax report + pay in stocks | A send or trade works from a wallet with no ETH |
-| 5 | Mainnet with caps, landing page, demo clips, daily build posts on X | Real deposits by you and a few testers |
-| 6 | Auto-invest + clean-funds proof | — |
-| 7 | $TINT launch + buyback script | — |
+### Before the application closes (Nov 17 → Dec 6, 19 days)
 
-Testing uses `anvil --fork-url https://rpc.mainnet.chain.robinhood.com`, so swaps hit the real pools with fake money. A testnet deploy isn't needed for that.
+| Dates | What | Done when |
+|---|---|---|
+| Nov 17–18 | Install Noir + `bb` + `cargo-stylus`. Register **tint.trade** + **@tinttrade**. Public GitHub repo | `nargo --version` works, repo is public |
+| Nov 18–23 | `transact` circuit, `TintPool`, Stylus `TintTree`, tests on a fork of Robinhood mainnet | Shield → send → unshield passes in `forge test` with real proofs |
+| Nov 23–27 | `swap` circuit + Uniswap adapter | Private USDG → NVDA → USDG round trip on the fork at real pool prices |
+| Nov 27–Dec 2 | Web wallet: keys, scanning, send, pay in stocks, trade, **viewing key + CSV**. Deploy on Robinhood testnet 46630, verify the contracts | The full loop works on testnet from the live site, with real tx links |
+| Dec 2–4 | README with a "Verify in 2 minutes" section, a 2-min demo video, 3–4 build posts on @tinttrade | A stranger can try it without asking us anything |
+| Dec 4–5 | Fill the form from `APPLICATION.md`. **Submit by Dec 5**, a day early | Submitted |
+
+Testnet has Robinhood's test stock tokens (TSLA, AMZN, PLTR, NFLX, AMD; addresses in Rooq's docs) but no real pools. We seed small Uniswap v3 pools there or, if Uniswap isn't deployed on 46630, a plain test pool, **labelled as a test pool in the UI**. Real-price swaps are shown on the mainnet fork in tests and in the video.
+
+Cut first if time runs out: relayer (users pay testnet gas themselves), payment links, AAPL/META etc. Never cut: shield → send → swap → unshield → viewing key, live on testnet.
+
+### During the programme (Jan 5 → Mar 25 2027)
+
+| What | Why |
+|---|---|
+| Relayer, so users need no ETH | Practicality |
+| Outside review of the circuits + contracts, then **mainnet on Robinhood Chain with deposit caps** | "Mainnet within 6 months". Have this before Demo Day |
+| Clean-funds proof (deposits from an approved list) | The compliance story for Robinhood and investors |
+| Auto-invest | The retention feature |
+| Private USDC payments on Arbitrum One | Second chain, bigger payments market |
+| $TINT design with the tokenomics mentors, launch after mainnet | Token backed by real fee revenue |
+| Demo Day pitch: users, deposits, fees | $100K prize + investors |
+
+Testing uses `anvil --fork-url https://rpc.mainnet.chain.robinhood.com`, so swaps hit the real pools with fake money.
 
 ## Risks
 
