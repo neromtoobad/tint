@@ -13,3 +13,4 @@ contracts/deployments/31337.json
 web/dist/
 web/public/circuits/
 web/src/deployments/
+!.env.example
