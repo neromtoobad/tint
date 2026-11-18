@@ -15,7 +15,8 @@
 // two inputs must not share.
 
 use notes::{
-    assert_amount, commitment, inner_hash, merkle_root, nullifier, owner_of, TREE_DEPTH,
+    assert_amount, commitment, inner_hash, merkle_root, nullifier, owner_of, spend_inputs,
+    TREE_DEPTH,
 };
 
 fn main(
@@ -41,18 +42,17 @@ fn main(
     assert_amount(public_in);
     assert_amount(public_out);
 
-    let owner = owner_of(spend_key);
-    let mut total_in = public_in;
-    for i in 0..2 {
-        assert_amount(in_amount[i]);
-        let c = commitment(asset, in_amount[i], inner_hash(owner, in_blinding[i]));
-        let r = merkle_root(c, in_index[i], in_path[i]);
-        // Real notes must be in the tree; dummies (amount 0) skip the check.
-        assert((r - root) * in_amount[i] == 0, "input note not in tree");
-        assert(nullifiers[i] == nullifier(c, in_index[i], spend_key), "bad nullifier");
-        total_in += in_amount[i];
-    }
-    assert(nullifiers[0] != nullifiers[1], "same note spent twice");
+    let total_in = public_in
+        + spend_inputs(
+            root,
+            nullifiers,
+            asset,
+            spend_key,
+            in_amount,
+            in_blinding,
+            in_index,
+            in_path,
+        );
 
     let mut total_out = public_out;
     for i in 0..2 {

@@ -7,7 +7,7 @@ export PATH="$HOME/.bb:$HOME/.nargo/bin:$PATH"
 here="$(cd "$(dirname "$0")" && pwd)"
 out="$here/../contracts/src/verifiers"
 mkdir -p "$out"
-for c in transact; do
+for c in transact swap; do
   name="$(echo "${c:0:1}" | tr a-z A-Z)${c:1}Verifier"
   (cd "$here/$c" && nargo compile && bb write_vk -b "target/$c.json" -o target -t evm)
   bb write_solidity_verifier -k "$here/$c/target/vk" -o "$out/$name.sol" -t evm

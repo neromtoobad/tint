@@ -62,6 +62,33 @@ pub fn merkle_root(leaf: Field, index: Field, path: [Field; TREE_DEPTH]) -> Fiel
     node
 }
 
+// Checks two input notes owned by `spend_key` and their nullifiers.
+// Real notes must be in the tree under `root`; amount-0 inputs are dummies.
+// Returns the total amount spent.
+pub fn spend_inputs(
+    root: Field,
+    nullifiers: [Field; 2],
+    asset: Field,
+    spend_key: Field,
+    in_amount: [Field; 2],
+    in_blinding: [Field; 2],
+    in_index: [Field; 2],
+    in_path: [[Field; TREE_DEPTH]; 2],
+) -> Field {
+    let owner = owner_of(spend_key);
+    let mut total = 0;
+    for i in 0..2 {
+        assert_amount(in_amount[i]);
+        let c = commitment(asset, in_amount[i], inner_hash(owner, in_blinding[i]));
+        let r = merkle_root(c, in_index[i], in_path[i]);
+        assert((r - root) * in_amount[i] == 0, "input note not in tree");
+        assert(nullifiers[i] == nullifier(c, in_index[i], spend_key), "bad nullifier");
+        total += in_amount[i];
+    }
+    assert(nullifiers[0] != nullifiers[1], "same note spent twice");
+    total
+}
+
 // Root of an empty tree (all leaves 0). The pool contract starts from the same value.
 pub fn empty_root() -> Field {
     let mut z = 0;
