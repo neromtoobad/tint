@@ -43,8 +43,26 @@ export class TintWallet {
     this.agentMemos = new Map(); // agent index -> { index, name, rules, plan, txHash, block }
   }
 
-  /** Reads new pool events up to the latest block. */
-  async sync() {
+  /**
+   * Reads new pool events up to the latest block. Calls never overlap (that would
+   * apply events twice): a call made during a sync waits for it, then runs once more,
+   * so it always sees blocks mined before it was called.
+   */
+  sync() {
+    if (this._syncing) {
+      this._again ??= this._syncing.then(() => {
+        this._again = null;
+        return this.sync();
+      });
+      return this._again;
+    }
+    this._syncing = this._sync().finally(() => {
+      this._syncing = null;
+    });
+    return this._syncing;
+  }
+
+  async _sync() {
     const latest = await this.client.getBlockNumber();
     while (this.nextBlock <= latest) {
       let to = this.nextBlock + this.chunk - 1n;
@@ -171,7 +189,9 @@ export class TintWallet {
         const fee = pub?.fee ?? 0n;
         const any = mine[0] ?? spentHere[0];
         const base = { tx, block: pub?.block ?? any?.block, asset: any ? toAddr(any.asset) : undefined, fee };
-        if (!spent) items.push({ ...base, type: 'receive', amount: got });
+        const agent = [...this.agentMemos.values()].find((m) => m.txHash === tx);
+        if (agent) items.push({ ...base, type: 'fund-agent', amount: spent - got - fee, agent: agent.index, name: agent.name });
+        else if (!spent) items.push({ ...base, type: 'receive', amount: got });
         else if (spent - got - fee > 0n) items.push({ ...base, type: 'send', amount: spent - got - fee });
         else items.push({ ...base, type: 'combine', amount: got });
       }
