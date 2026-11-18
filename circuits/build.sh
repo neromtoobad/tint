@@ -7,8 +7,9 @@ export PATH="$HOME/.bb:$HOME/.nargo/bin:$PATH"
 here="$(cd "$(dirname "$0")" && pwd)"
 out="$here/../contracts/src/verifiers"
 mkdir -p "$out"
-for c in transact swap; do
-  name="$(echo "${c:0:1}" | tr a-z A-Z)${c:1}Verifier"
+for c in transact swap agent_transact agent_swap; do
+  # agent_swap -> AgentSwapVerifier
+  name="$(echo "$c" | awk -F_ '{for(i=1;i<=NF;i++) printf toupper(substr($i,1,1)) substr($i,2)}')Verifier"
   (cd "$here/$c" && nargo compile && bb write_vk -b "target/$c.json" -o target -t evm)
   bb write_solidity_verifier -k "$here/$c/target/vk" -o "$out/$name.sol" -t evm
   # bb names every verifier HonkVerifier; give each its own name.

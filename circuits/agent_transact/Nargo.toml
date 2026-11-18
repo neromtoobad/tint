@@ -1,0 +1,8 @@
+[package]
+name = "agent_transact"
+type = "bin"
+authors = ["neromtoobad"]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+notes = { path = "../notes" }
