@@ -394,7 +394,7 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
         <label className="field">
           <span className="label mono">How often</span>
           <select className="input" value={every} onChange={(e) => setEvery(Number(e.target.value))} disabled={busy}>
-            {(net.localKey ? [...EVERY, [300, 'Every 5 min (test)']] : EVERY).map(([v, l]) => (
+            {(net.localKey ? [...EVERY, [60, 'Every minute (test)']] : EVERY).map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
