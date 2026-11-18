@@ -8,3 +8,8 @@ web/.next/
 .DS_Store
 brand/refs/
 brand/tools/node_modules/
+contracts/broadcast/
+contracts/deployments/31337.json
+web/dist/
+web/public/circuits/
+web/src/deployments/
