@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
 import { cashOf, quote } from './chain.js';
-import { ensureAllowance, runAction, tokenBalance } from './engine.js';
+import { ensureAllowance, relayerFee, runAction, tokenBalance } from './engine.js';
 import { amt, friendly, parseAmount, short, usd } from './format.js';
 
 const TABS = [
@@ -17,11 +17,12 @@ const STAGES = {
   approve: 'Allow Tint to move this token',
   prove: 'Making the proof on this device',
   sign: 'Confirm in your wallet',
+  relay: 'The relayer is sending it',
   mine: 'Waiting for the block',
   done: 'Done',
 };
 
-export default function Trade({ net, wallet, session, address, balances, prices, synced, onDone }) {
+export default function Trade({ net, wallet, session, address, balances, prices, synced, onDone, relayer }) {
   const cash = cashOf(net);
   const stocks = useMemo(() => net.assets.filter((a) => !a.cash), [net]);
   const tradeable = stocks.filter((s) => prices[s.address.toLowerCase()] != null);
@@ -38,6 +39,8 @@ export default function Trade({ net, wallet, session, address, balances, prices,
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [needsCombine, setNeedsCombine] = useState(false);
+  const [useRelay, setUseRelay] = useState(true);
+  const [fee, setFee] = useState(null); // relayer fee in inAsset units
 
   const stock = stocks.find((s) => s.address === stockAddr);
   const asset = net.assets.find((a) => a.address === assetAddr);
@@ -45,6 +48,25 @@ export default function Trade({ net, wallet, session, address, balances, prices,
   const inAsset = tab === 'buy' ? cash : tab === 'sell' ? stock : asset;
   const outAsset = tab === 'buy' ? stock : cash;
   const amount = parseAmount(text, inAsset);
+  const relayed = !!relayer && useRelay && tab !== 'add';
+  const feeNow = relayed ? fee : 0n;
+
+  // The relayer's fee, in whatever this action spends.
+  useEffect(() => {
+    setFee(null);
+    if (!relayed) return;
+    let stop = false;
+    const load = () =>
+      relayerFee(relayer, inAsset.address)
+        .then((f) => !stop && setFee(f))
+        .catch(() => !stop && setFee(null));
+    load();
+    const id = setInterval(load, 30_000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, [relayed, relayer, inAsset]);
 
   // Wallet balance (public) for "Add".
   useEffect(() => {
@@ -85,35 +107,36 @@ export default function Trade({ net, wallet, session, address, balances, prices,
     if (!busy) clear();
   };
 
-  useEffect(() => {
-    if (tab === 'out' && !to && address) setTo(address);
-  }, [tab, to, address]);
 
   const spendable = tab === 'add' ? publicBal : held(inAsset);
-  const over = amount != null && spendable != null && amount > spendable;
+  const over = amount != null && spendable != null && feeNow != null && amount + feeNow > spendable;
+  const maxSpend = spendable == null ? null : tab === 'add' ? spendable : spendable - (feeNow ?? 0n) > 0n ? spendable - (feeNow ?? 0n) : 0n;
   const validTo = tab === 'out' ? /^0x[0-9a-fA-F]{40}$/.test(to.trim()) : tab === 'send' ? /^tint1[0-9a-f]{128}$/.test(to.trim()) : true;
-  const canGo = synced && !busy && amount && !over && validTo && (!isSwap || (q && q !== 'none'));
+  const canGo = synced && !busy && amount && !over && validTo && feeNow != null && (!isSwap || (q && q !== 'none'));
 
   const step = (stage, d = {}) => setRun((r) => ({ ...r, ...d, stage }));
 
   async function submit(combine = false) {
     setBusy(true);
     setError(null);
-    setRun(null);
     try {
       const account = session.account;
       const walletClient = session.walletClient;
       await wallet.sync();
+      // fee and relayer are fixed inside the proof, so take a fresh fee now
+      const f = relayed ? await relayerFee(relayer, inAsset.address) : 0n;
+      const via = relayed ? { relayer: relayer.relayer, fee: f } : {};
+      setRun({ relayed, stage: null });
       let action;
       if (combine) {
-        action = wallet.combine({ asset: inAsset.address });
+        action = wallet.combine({ asset: inAsset.address, ...via });
       } else if (tab === 'add') {
         await ensureAllowance({ net, walletClient, account, token: asset.address, amount, step });
         action = wallet.deposit({ asset: asset.address, amount });
       } else if (tab === 'out') {
-        action = wallet.withdraw({ asset: asset.address, amount, recipient: to.trim() });
+        action = wallet.withdraw({ asset: asset.address, amount, recipient: to.trim(), ...via });
       } else if (tab === 'send') {
-        action = wallet.send({ asset: asset.address, amount, to: to.trim() });
+        action = wallet.send({ asset: asset.address, amount, to: to.trim(), ...via });
       } else {
         const fresh = await quote(net, inAsset.address, outAsset.address, amount);
         if (!fresh) throw new Error('There is no market for this pair right now.');
@@ -121,13 +144,14 @@ export default function Trade({ net, wallet, session, address, balances, prices,
         action = wallet.swap({
           assetIn: inAsset.address,
           assetOut: outAsset.address,
-          amountIn: amount,
+          amountIn: amount + f, // the fee comes out of what you spend; `amount` is what gets sold
           minOut: (fresh.amountOut * (10_000n - SLIPPAGE_BPS)) / 10_000n,
           poolFee: fresh.poolFee,
           deadline: block.timestamp + 600n,
+          ...via,
         });
       }
-      await runAction({ net, walletClient, account, action, step });
+      await runAction({ net, walletClient, account, action, step, relayer: relayed ? relayer : null });
       await onDone();
       if (!combine) setText('');
       setNeedsCombine(false);
@@ -193,7 +217,7 @@ export default function Trade({ net, wallet, session, address, balances, prices,
         <div className="field-head">
           <span className="label mono">{tab === 'buy' ? 'Pay with USDG' : tab === 'sell' ? `Shares of ${stock?.symbol}` : 'Amount'}</span>
           {spendable != null && (
-            <button className="link sm num" onClick={() => type(formatUnits(spendable, inAsset.decimals))} disabled={busy}>
+            <button className="link sm num" onClick={() => maxSpend != null && type(formatUnits(maxSpend, inAsset.decimals))} disabled={busy}>
               {tab === 'add' ? 'In your wallet' : 'Private'}: {amt(spendable, inAsset)} {inAsset.symbol}
             </button>
           )}
@@ -206,8 +230,34 @@ export default function Trade({ net, wallet, session, address, balances, prices,
         <div className="field">
           <span className="label mono">{tab === 'out' ? 'Send to address' : 'Their Tint address'}</span>
           <input className="input mono" placeholder={tab === 'out' ? '0x…' : 'tint1…'} value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} />
-          {tab === 'out' && <span className="hint">Your wallet sends this transaction, so the explorer links it to your address until relayers are live.</span>}
+          {tab === 'out' && address && (
+            <button className="link sm" onClick={() => setTo(address)} disabled={busy}>
+              Use my wallet address (links this take-out to you)
+            </button>
+          )}
           {tab === 'send' && to && !validTo && <span className="warn">That is not a Tint address.</span>}
+        </div>
+      )}
+
+      {tab !== 'add' && (
+        <div className="relay">
+          {relayer ? (
+            <>
+              <label className="check">
+                <input type="checkbox" checked={useRelay} onChange={(e) => setUseRelay(e.target.checked)} disabled={busy} />
+                <span>Send through the relayer</span>
+              </label>
+              <span className="muted sm num">
+                {relayed
+                  ? fee == null
+                    ? 'Getting the fee…'
+                    : `Fee ${amt(fee, inAsset)} ${inAsset.symbol} · your wallet stays out of it`
+                  : 'Off: your wallet sends it and shows as the sender'}
+              </span>
+            </>
+          ) : (
+            <span className="muted sm">No relayer is running, so your wallet sends this and the explorer shows it as the sender.</span>
+          )}
         </div>
       )}
 
@@ -249,14 +299,14 @@ export default function Trade({ net, wallet, session, address, balances, prices,
         </button>
       )}
 
-      {run && <Progress run={run} tab={tab} net={net} />}
+      {run?.stage && <Progress run={run} tab={tab} net={net} />}
       {error && <p className="error">{error}</p>}
     </section>
   );
 }
 
 function Progress({ run, tab, net }) {
-  const order = tab === 'add' ? ['approve', 'prove', 'sign', 'mine', 'done'] : ['prove', 'sign', 'mine', 'done'];
+  const order = tab === 'add' ? ['approve', 'prove', 'sign', 'mine', 'done'] : ['prove', run.relayed ? 'relay' : 'sign', 'mine', 'done'];
   const at = order.indexOf(run.stage);
   return (
     <ol className="progress">

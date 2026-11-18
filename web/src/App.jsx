@@ -3,7 +3,7 @@ import { createWalletClient, custom, http, numberToHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { KEY_MESSAGE, TintWallet, importViewingKey, initHash, keysFromSignature } from '@tint/sdk';
 import { networks, priceOf } from './chain.js';
-import { warmProvers } from './engine.js';
+import { relayerInfo, warmProvers } from './engine.js';
 import { short } from './format.js';
 import Connect from './Connect.jsx';
 import Trade from './Trade.jsx';
@@ -18,6 +18,7 @@ export default function App() {
   const [tick, setTick] = useState(0); // bumps after every sync
   const [prices, setPrices] = useState({});
   const [syncError, setSyncError] = useState(null);
+  const [relayer, setRelayer] = useState(null);
   const syncing = useRef(false);
 
   const sync = useCallback(async () => {
@@ -48,6 +49,19 @@ export default function App() {
     const id = setInterval(sync, 4000);
     return () => clearInterval(id);
   }, [wallet, sync]);
+
+  // Is a relayer up for this pool? Checked every 30 s.
+  useEffect(() => {
+    if (!net) return;
+    let stop = false;
+    const check = () => relayerInfo(net).then((r) => !stop && setRelayer(r));
+    check();
+    const id = setInterval(check, 30_000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, [net]);
 
   // Prices from the Uniswap pools, every 30 s.
   useEffect(() => {
@@ -150,9 +164,9 @@ export default function App() {
                 <p className="muted">This is a viewing key. It shows the balance and history, and can’t move anything.</p>
               </div>
             ) : (
-              <Trade net={net} wallet={wallet} session={session} address={address} balances={balances} prices={prices} synced={synced} onDone={sync} />
+              <Trade net={net} wallet={wallet} session={session} address={address} balances={balances} prices={prices} synced={synced} onDone={sync} relayer={relayer} />
             )}
-            <Visibility />
+            <Visibility relayer={relayer} />
             {!session.viewOnly && <Keys keys={session.keys} />}
           </div>
         </div>

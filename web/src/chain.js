@@ -43,6 +43,7 @@ const NETWORKS = {
     explorer: null,
     quoter: '0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7',
     assets: stocks(MAINNET_TOKENS),
+    relayer: import.meta.env.VITE_RELAYER_URL ?? 'http://127.0.0.1:8790',
     // anvil's well-known test account 1: local fork only, holds fork-minted USDG
     localKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',
   },

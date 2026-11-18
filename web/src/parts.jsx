@@ -88,7 +88,9 @@ function describe(net, h) {
   const q = a ? `${amt(h.amount, a)} ${a.symbol}` : '';
   if (h.type === 'deposit') return { title: 'Added', detail: q };
   if (h.type === 'withdraw') return { title: 'Took out', detail: q };
-  return { title: 'Private transfer', detail: q && `${q} landed here` };
+  if (h.type === 'send') return { title: 'Sent privately', detail: q };
+  if (h.type === 'receive') return { title: 'Received privately', detail: q };
+  return { title: 'Combined notes', detail: q };
 }
 
 export function Activity({ net, history, synced }) {
@@ -108,7 +110,7 @@ export function Activity({ net, history, synced }) {
             const d = describe(net, h);
             return (
               <div className="tr" key={h.tx + h.type}>
-                <span className={`kind mono ${h.type}`}>{h.type === 'swap' ? 'Trade' : h.type === 'deposit' ? 'In' : h.type === 'withdraw' ? 'Out' : 'Note'}</span>
+                <span className={`kind mono ${h.type}`}>{{ swap: 'Trade', deposit: 'In', withdraw: 'Out', send: 'Sent', receive: 'Got' }[h.type] ?? 'Note'}</span>
                 <span className="grow">
                   <b>{d.title}</b>
                   <span className="muted sm num">{d.detail}</span>
@@ -131,18 +133,20 @@ export function Activity({ net, history, synced }) {
   );
 }
 
-export function Visibility() {
+export function Visibility({ relayer }) {
+  const by = relayer ? 'sent by the relayer, not your wallet' : 'with your wallet as the sender';
   const lines = [
-    ['Add money', 'Your wallet address and the amount.'],
+    ['Add money', 'Your wallet address and the amount. This step always comes from your wallet.'],
     ['Hold', 'Nothing. Balances and holdings are never on chain.'],
-    ['Buy or sell', 'The pair and the size, and your wallet as the sender.'],
-    ['Send to a Tint user', 'That your wallet made a transfer. Not the amount or who got it.'],
-    ['Take out', 'The receiving address, the amount, and your wallet as the sender.'],
+    ['Buy or sell', `The pair and the size, ${by}.`],
+    ['Send to a Tint user', `That a transfer happened${relayer ? ' and which token paid the fee' : ''}, ${by}. Not the amount or who got it.`],
+    ['Take out', `The receiving address and the amount, ${by}.`],
   ];
   return (
     <section className="card pad">
       <div className="card-head">
-        <h3>What others can see today</h3>
+        <h3>What others can see</h3>
+        <span className="label mono">{relayer ? 'Relayer on' : 'No relayer'}</span>
       </div>
       <div className="table">
         {lines.map(([what, seen]) => (
@@ -155,8 +159,9 @@ export function Visibility() {
         ))}
       </div>
       <p className="fine mono">
-        Your wallet sends each transaction for now. Once relayers are live, a relayer sends it instead, and trades and
-        take-outs stop pointing back to your address.
+        {relayer
+          ? 'The relayer sees your IP address and the transaction, never your keys. Take out to an address you have never used, or the link comes back through it.'
+          : 'Start the relayer (relayer/) so trades and take-outs stop pointing back to your address.'}
       </p>
     </section>
   );
