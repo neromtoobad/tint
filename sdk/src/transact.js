@@ -1,9 +1,5 @@
 // Builds and proves a `transact` call (deposit, withdraw or private transfer).
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { encodeAbiParameters, keccak256 } from 'viem';
-import { Noir } from '@noir-lang/noir_js';
-import { Barretenberg, UltraHonkBackend } from '@aztec-foundation/bb.js';
 import { FIELD, randomField, toHex } from './hash.js';
 import { makeNote, nullifierOf, ownerOf } from './notes.js';
 import { emptyPath } from './tree.js';
@@ -91,34 +87,4 @@ export function buildTransact({ tree, spendKey, asset, inputs = [], outputs = []
     outCommitments: outNotes.map((n) => n.commitment),
   };
   return { circuitInputs, publicData, outNotes, extHash };
-}
-
-const DEFAULT_CIRCUIT = fileURLToPath(new URL('../../circuits/transact/target/transact.json', import.meta.url));
-
-export class TransactProver {
-  static async create(circuitPath = DEFAULT_CIRCUIT) {
-    const circuit = JSON.parse(readFileSync(circuitPath, 'utf8'));
-    const api = await Barretenberg.new();
-    return new TransactProver(circuit, api);
-  }
-
-  constructor(circuit, api) {
-    this.noir = new Noir(circuit);
-    this.backend = new UltraHonkBackend(circuit.bytecode, api);
-    this.api = api;
-  }
-
-  /** Returns { proof: Uint8Array, publicInputs: string[] } for the EVM verifier. */
-  async prove(circuitInputs) {
-    const { witness } = await this.noir.execute(circuitInputs);
-    return this.backend.generateProof(witness, { verifierTarget: 'evm' });
-  }
-
-  async verify(proofData) {
-    return this.backend.verifyProof(proofData, { verifierTarget: 'evm' });
-  }
-
-  async destroy() {
-    await this.api.destroy();
-  }
 }
