@@ -1,0 +1,15 @@
+{
+  "name": "@tint/agent",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Tint agent runner: invests from an agent account on a schedule, inside rules a proof enforces",
+  "scripts": {
+    "start": "node run.mjs",
+    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json node run.mjs"
+  },
+  "dependencies": {
+    "@tint/sdk": "file:../sdk",
+    "viem": "2.38.0"
+  }
+}
