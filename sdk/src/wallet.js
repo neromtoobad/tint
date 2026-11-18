@@ -75,7 +75,7 @@ export class TintWallet {
         this.nullifierTx.set(args.nullifier, tx);
       }
       else if (eventName === 'Transacted') {
-        this.publicByTx.set(tx, { asset: args.publicAsset, publicIn: args.publicIn, publicOut: args.publicOut, block: log.blockNumber });
+        this.publicByTx.set(tx, { asset: args.publicAsset, publicIn: args.publicIn, publicOut: args.publicOut, fee: args.relayerFee, block: log.blockNumber });
       } else if (eventName === 'Swapped') {
         this.swapsByTx.set(tx, { ...args, block: log.blockNumber });
         this._resolveBought(tx);
@@ -146,11 +146,18 @@ export class TintWallet {
         items.push({ type: 'swap', tx, block: swap.block, assetIn: swap.assetIn, assetOut: swap.assetOut, amountSold: swap.amountSold, amountOut: swap.amountOut });
       } else if (pub && pub.publicIn > 0n) {
         items.push({ type: 'deposit', tx, block: pub.block, asset: toAddr(pub.asset), amount: pub.publicIn });
-      } else if (pub && pub.publicOut > 0n) {
-        items.push({ type: 'withdraw', tx, block: pub.block, asset: toAddr(pub.asset), amount: pub.publicOut });
+      } else if (pub && pub.publicOut > pub.fee) {
+        items.push({ type: 'withdraw', tx, block: pub.block, asset: toAddr(pub.asset), amount: pub.publicOut - pub.fee, fee: pub.fee });
       } else {
+        // private transfer: sent (we spent notes), received (we only gained notes) or combined
         const got = mine.reduce((s, n) => s + n.amount, 0n);
-        items.push({ type: 'private', tx, block: mine[0]?.block, asset: mine[0] ? toAddr(mine[0].asset) : undefined, amount: got });
+        const spent = spentHere.reduce((s, n) => s + n.amount, 0n);
+        const fee = pub?.fee ?? 0n;
+        const any = mine[0] ?? spentHere[0];
+        const base = { tx, block: pub?.block ?? any?.block, asset: any ? toAddr(any.asset) : undefined, fee };
+        if (!spent) items.push({ ...base, type: 'receive', amount: got });
+        else if (spent - got - fee > 0n) items.push({ ...base, type: 'send', amount: spent - got - fee });
+        else items.push({ ...base, type: 'combine', amount: got });
       }
     }
     return items.reverse();
@@ -194,11 +201,14 @@ export class TintWallet {
     return this._transact({ asset, publicIn: amount, outputs: [{ amount, blinding: blinding[0] }, { amount: 0n, blinding: blinding[1] }], ext });
   }
 
-  /** Take `amount` of `asset` out of the private balance to any address. */
+  /**
+   * Take `amount` of `asset` out of the private balance to any address.
+   * The recipient gets `amount`; a relayer `fee` (same asset) comes on top.
+   */
   withdraw({ asset, amount, recipient, relayer = ZERO, fee = 0n }) {
     this._readOnly();
-    const ins = this._pick(asset, amount);
-    const change = ins.reduce((s, n) => s + n.amount, 0n) - amount;
+    const ins = this._pick(asset, amount + fee);
+    const change = ins.reduce((s, n) => s + n.amount, 0n) - amount - fee;
     const blinding = [randomField(), randomField()];
     const ext = {
       recipient,
@@ -209,7 +219,7 @@ export class TintWallet {
     };
     return this._transact({
       asset,
-      publicOut: amount,
+      publicOut: amount + fee,
       inputs: ins,
       outputs: [{ amount: change, blinding: blinding[0] }, { amount: 0n, blinding: blinding[1] }],
       ext,
@@ -217,21 +227,23 @@ export class TintWallet {
   }
 
   /** Pay another Tint user privately (tint1… address). Nothing leaves the pool. */
-  send({ asset, amount, to }) {
+  send({ asset, amount, to, relayer = ZERO, fee = 0n }) {
     this._readOnly();
     const { owner, viewPublic } = decodeAddress(to);
-    const ins = this._pick(asset, amount);
-    const change = ins.reduce((s, n) => s + n.amount, 0n) - amount;
+    const ins = this._pick(asset, amount + fee);
+    const change = ins.reduce((s, n) => s + n.amount, 0n) - amount - fee;
     const blinding = [randomField(), randomField()];
+    // A relayer fee leaves the pool as publicOut with no recipient (this reveals the asset, not the amount sent).
     const ext = {
       recipient: ZERO,
-      relayer: ZERO,
-      fee: 0n,
+      relayer,
+      fee,
       encryptedOutput0: this._enc(viewPublic, { asset, amount, blinding: blinding[0] }),
       encryptedOutput1: this._enc(this.keys.viewPublic, { asset, amount: change, blinding: blinding[1] }),
     };
     return this._transact({
       asset,
+      publicOut: fee,
       inputs: ins,
       outputs: [
         { amount, owner, blinding: blinding[0] },
@@ -242,19 +254,20 @@ export class TintWallet {
   }
 
   /** Combine your two largest notes of `asset` into one. */
-  combine({ asset }) {
+  combine({ asset, relayer = ZERO, fee = 0n }) {
     this._readOnly();
     const ins = this.unspent(asset).sort((a, b) => (a.amount > b.amount ? -1 : 1)).slice(0, 2);
-    const total = ins.reduce((s, n) => s + n.amount, 0n);
+    const total = ins.reduce((s, n) => s + n.amount, 0n) - fee;
+    if (total < 0n) throw new Error('Not enough in your private balance.');
     const blinding = [randomField(), randomField()];
     const ext = {
       recipient: ZERO,
-      relayer: ZERO,
-      fee: 0n,
+      relayer,
+      fee,
       encryptedOutput0: this._enc(this.keys.viewPublic, { asset, amount: total, blinding: blinding[0] }),
       encryptedOutput1: this._enc(this.keys.viewPublic, { asset, amount: 0n, blinding: blinding[1] }),
     };
-    return this._transact({ asset, inputs: ins, outputs: [{ amount: total, blinding: blinding[0] }, { amount: 0n, blinding: blinding[1] }], ext });
+    return this._transact({ asset, publicOut: fee, inputs: ins, outputs: [{ amount: total, blinding: blinding[0] }, { amount: 0n, blinding: blinding[1] }], ext });
   }
 
   _transact({ asset, publicIn = 0n, publicOut = 0n, inputs = [], outputs, ext }) {
@@ -273,6 +286,7 @@ export class TintWallet {
 
   /**
    * Buy or sell from the private balance.
+   * @param amountIn total taken from your notes: the relayer `fee` comes out of it, the rest is sold
    * @param minOut  least of assetOut to accept (get it from a quote, minus slippage)
    * @param poolFee Uniswap fee tier of the pool to trade on
    */

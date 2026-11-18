@@ -76,9 +76,10 @@ await w.sync();
 console.log('after sell:', fmt(w.balances()));
 const usdgNotes = w.unspent(USDG);
 console.log('USDG notes:', usdgNotes.map((n) => formatUnits(n.amount, 6)));
-const all = w.balances()[USDG.toLowerCase()];
+// one proof spends at most two notes; take out what the two largest cover
+const all = usdgNotes.map((n) => n.amount).sort((a, b) => (a > b ? -1 : 1)).slice(0, 2).reduce((s, a) => s + a, 0n);
 const fresh = '0x000000000000000000000000000000000000beef';
-await run(w.withdraw({ asset: USDG, amount: all, recipient: fresh }), 'withdraw all USDG to a fresh address');
+await run(w.withdraw({ asset: USDG, amount: all, recipient: fresh }), 'withdraw USDG to a fresh address');
 await w.sync();
 console.log('fresh address got', formatUnits(await client.readContract({ address: USDG, abi: erc20Abi, functionName: 'balanceOf', args: [fresh] }), 6), 'USDG');
 console.log('left in private balance:', fmt(w.balances()));

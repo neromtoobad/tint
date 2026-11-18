@@ -18,6 +18,7 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./node": "./src/node.js"
+    "./node": "./src/node.js",
+    "./abi": "./src/abi.js"
   }
 }
