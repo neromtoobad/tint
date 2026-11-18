@@ -133,16 +133,16 @@ export function Activity({ net, history, synced }) {
 
 export function Visibility() {
   const lines = [
-    ['Add money', 'Your wallet address and the amount. This step is public.'],
-    ['Buy or sell', 'That someone in Tint traded, the pair and the size. Not who.'],
-    ['Hold', 'Nothing. Balances are never on chain.'],
-    ['Send to a Tint user', 'Only that a private transfer happened.'],
-    ['Take out', 'The receiving address and the amount. Not which deposit it came from.'],
+    ['Add money', 'Your wallet address and the amount.'],
+    ['Hold', 'Nothing. Balances and holdings are never on chain.'],
+    ['Buy or sell', 'The pair and the size, and your wallet as the sender.'],
+    ['Send to a Tint user', 'That your wallet made a transfer. Not the amount or who got it.'],
+    ['Take out', 'The receiving address, the amount, and your wallet as the sender.'],
   ];
   return (
     <section className="card pad">
       <div className="card-head">
-        <h3>What others can see</h3>
+        <h3>What others can see today</h3>
       </div>
       <div className="table">
         {lines.map(([what, seen]) => (
@@ -154,7 +154,10 @@ export function Visibility() {
           </div>
         ))}
       </div>
-      <p className="fine mono">For more privacy, take out to an address you have never used.</p>
+      <p className="fine mono">
+        Your wallet sends each transaction for now. Once relayers are live, a relayer sends it instead, and trades and
+        take-outs stop pointing back to your address.
+      </p>
     </section>
   );
 }

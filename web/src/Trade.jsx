@@ -206,7 +206,7 @@ export default function Trade({ net, wallet, session, address, balances, prices,
         <div className="field">
           <span className="label mono">{tab === 'out' ? 'Send to address' : 'Their Tint address'}</span>
           <input className="input mono" placeholder={tab === 'out' ? '0x…' : 'tint1…'} value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} />
-          {tab === 'out' && <span className="hint">Taking out to an address you have never used keeps the link hidden.</span>}
+          {tab === 'out' && <span className="hint">Your wallet sends this transaction, so the explorer links it to your address until relayers are live.</span>}
           {tab === 'send' && to && !validTo && <span className="warn">That is not a Tint address.</span>}
         </div>
       )}

@@ -32,7 +32,7 @@ export default function Connect({ net, onUnlock }) {
         </h1>
         <p className="lead">
           Tint keeps tokenized stocks in a shared private pool on Robinhood Chain. You buy, sell and send from it with a
-          proof made on this device, so the chain checks every trade without learning whose it is or what you hold.
+          proof made on this device, so the chain checks every trade without learning what you hold.
         </p>
 
         <div className="steps">
@@ -88,7 +88,7 @@ export default function Connect({ net, onUnlock }) {
           </span>
           <div className="peek">
             <div>
-              <span className="mono">Who traded</span>
+              <span className="mono">Who they paid</span>
               <b>?</b>
             </div>
             <div>
@@ -96,7 +96,7 @@ export default function Connect({ net, onUnlock }) {
               <b>?</b>
             </div>
             <div>
-              <span className="mono">Their other trades</span>
+              <span className="mono">What they hold</span>
               <b>?</b>
             </div>
           </div>
