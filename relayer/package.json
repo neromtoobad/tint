@@ -1,0 +1,15 @@
+{
+  "name": "@tint/relayer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Sends Tint's private transactions so users' own wallets never appear as the sender",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json RELAYER_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a node src/server.js"
+  },
+  "dependencies": {
+    "@tint/sdk": "file:../sdk",
+    "viem": "2.38.0"
+  }
+}
