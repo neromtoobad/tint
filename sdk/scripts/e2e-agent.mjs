@@ -29,19 +29,22 @@ import {
 } from '../src/index.js';
 import { proverFor } from '../src/node.js';
 
-const depPath = fileURLToPath(new URL('../../contracts/deployments/31337.json', import.meta.url));
+const depPath = process.env.DEPLOYMENT ?? fileURLToPath(new URL('../../contracts/deployments/31337.json', import.meta.url));
 const dep = JSON.parse(readFileSync(depPath));
 const RELAYER = process.env.RELAYER_URL ?? 'http://127.0.0.1:8790';
-const chain = defineChain({ id: 31337, name: 'Robinhood fork', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [dep.rpc] } } });
-const USDG = '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168';
-const NVDA = '0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC';
-const TSLA = '0x322F0929c4625eD5bAd873c95208D54E1c003b2d';
-const names = { [USDG.toLowerCase()]: 'USDG', [NVDA.toLowerCase()]: 'NVDA', [TSLA.toLowerCase()]: 'TSLA' };
+const chain = defineChain({ id: dep.chainId, name: `chain ${dep.chainId}`, nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [process.env.RPC_URL ?? dep.rpc] } } });
+// Tokens: from the deployment file (testnet: tUSDG + Robinhood's test stocks), else the mainnet fork's.
+const cashAsset = dep.assets?.find((a) => a.cash);
+const stockAssets = dep.assets?.filter((a) => !a.cash) ?? [];
+const USDG = cashAsset?.address ?? '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168';
+const NVDA = stockAssets[0]?.address ?? '0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC';
+const TSLA = stockAssets[1]?.address ?? '0x322F0929c4625eD5bAd873c95208D54E1c003b2d';
+const names = { [USDG.toLowerCase()]: 'USDG', [NVDA.toLowerCase()]: stockAssets[0]?.symbol ?? 'NVDA', [TSLA.toLowerCase()]: stockAssets[1]?.symbol ?? 'TSLA' };
 const fmt = (b) => Object.fromEntries(Object.entries(b).map(([a, v]) => [names[a] ?? a, formatUnits(v, names[a] === 'USDG' ? 6 : 18)]));
 const json = (v) => JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x));
 
-// anvil test account 1 (public key, local only)
-const account = privateKeyToAccount('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d');
+// USER_KEY, or anvil test account 1 (public key, local only)
+const account = privateKeyToAccount(process.env.USER_KEY ?? '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d');
 // a cold fork pulls state from the public RPC, so first calls can be slow
 const client = createPublicClient({ chain, transport: http(undefined, { timeout: 120_000 }) });
 const wallet = createWalletClient({ chain, transport: http(undefined, { timeout: 120_000 }), account });
@@ -73,12 +76,16 @@ async function relayed(action, label) {
 const info = await (await fetch(`${RELAYER}/info`)).json();
 const feeIn = async (asset) => BigInt((await (await fetch(`${RELAYER}/fee?asset=${asset}`)).json()).fee);
 
-// 1. 300 USDG into the private balance
-await wallet.writeContract({ address: USDG, abi: erc20Abi, functionName: 'approve', args: [dep.pool, 2n ** 256n - 1n] });
+// 1. 300 USDG into the private balance (testnet: take it from the tUSDG faucet first)
+if (cashAsset?.name?.includes('Test')) {
+  const h = await wallet.writeContract({ address: USDG, abi: [{ type: 'function', name: 'faucet', stateMutability: 'nonpayable', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [] }], functionName: 'faucet', args: [parseUnits('300', 6)] });
+  await client.waitForTransactionReceipt({ hash: h });
+}
+await client.waitForTransactionReceipt({ hash: await wallet.writeContract({ address: USDG, abi: erc20Abi, functionName: 'approve', args: [dep.pool, 2n ** 256n - 1n] }) });
 let user = await make(keys).sync();
 await direct(user.deposit({ asset: USDG, amount: parseUnits('300', 6) }), 'add 300 USDG');
 
-// 2. an agent: NVDA + TSLA, 40 USDG a round (20 each), at most 25 a buy, fee at most 5%, one week
+// 2. an agent: two stocks, 40 USDG a round (20 each), at most 25 a buy, fee at most 5%, one week
 const now = Number((await client.getBlock()).timestamp);
 const index = Math.max(-1, ...(await user.sync()).agents().map((a) => a.index)) + 1;
 const rules = { cash: USDG, stocks: [NVDA, TSLA], maxBuy: parseUnits('25', 6), maxFeeBps: 500n, endsAt: BigInt(now + 7 * 86400), relayer: info.relayer };
@@ -87,7 +94,7 @@ const agentKey = agentKeyOf(keys.spendKey, index);
 const acct = agentAccountKeys({ agentKey, userOwner: keys.owner, rules });
 const fee = await feeIn(USDG);
 await relayed(
-  user.send({ asset: USDG, amount: parseUnits('100', 6), to: acct.address, relayer: info.relayer, fee, memo: encodeAgentMemo({ index, rules, plan, name: 'Weekly NVDA + TSLA' }) }),
+  user.send({ asset: USDG, amount: parseUnits('100', 6), to: acct.address, relayer: info.relayer, fee, memo: encodeAgentMemo({ index, rules, plan, name: `Weekly ${names[NVDA.toLowerCase()]} + ${names[TSLA.toLowerCase()]}` }) }),
   `fund agent #${index} with 100 USDG (private send)`,
 );
 

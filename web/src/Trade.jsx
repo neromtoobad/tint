@@ -68,6 +68,30 @@ export default function Trade({ net, wallet, session, address, balances, prices,
     };
   }, [relayed, relayer, inAsset]);
 
+  // Testnet only: take 1,000 Tint Test USDG from its open faucet.
+  const [faucetBusy, setFaucetBusy] = useState(false);
+  const [faucetTick, setFaucetTick] = useState(0);
+  async function takeTestCash() {
+    setFaucetBusy(true);
+    setError(null);
+    try {
+      const hash = await session.walletClient.writeContract({
+        account: session.account,
+        chain: net.chain,
+        address: net.testCash,
+        abi: [{ type: 'function', name: 'faucet', stateMutability: 'nonpayable', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [] }],
+        functionName: 'faucet',
+        args: [1_000_000_000n],
+      });
+      await net.client.waitForTransactionReceipt({ hash });
+      setFaucetTick((t) => t + 1);
+    } catch (e) {
+      setError(friendly(e));
+    } finally {
+      setFaucetBusy(false);
+    }
+  }
+
   // Wallet balance (public) for "Add".
   useEffect(() => {
     if (tab !== 'add' || !address) return;
@@ -78,7 +102,7 @@ export default function Trade({ net, wallet, session, address, balances, prices,
     return () => {
       stop = true;
     };
-  }, [tab, asset, address, net, run?.stage]);
+  }, [tab, asset, address, net, run?.stage, faucetTick]);
 
   // Live quote for buy / sell.
   useEffect(() => {
@@ -280,10 +304,20 @@ export default function Trade({ net, wallet, session, address, balances, prices,
               <div className="quote-meta mono">
                 {price != null && <span>{usd(price)} a share</span>}
                 <span>pool fee {q.poolFee / 10000}%</span>
+                {net.testPools && <span title="Testnet has no real stock markets, so Tint seeded small Uniswap pools at set prices">test pool</span>}
                 <span>at least {amt((q.amountOut * (10_000n - SLIPPAGE_BPS)) / 10_000n, outAsset)}</span>
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {tab === 'add' && net.testCash && inAsset.cash && session?.walletClient && (
+        <div className="row gap">
+          <button className="btn ghost" disabled={busy || faucetBusy} onClick={takeTestCash}>
+            {faucetBusy ? 'Getting test USDG…' : 'Get 1,000 test USDG'}
+          </button>
+          <span className="muted sm">Testnet only. Test USDG has no value; your wallet needs a little testnet ETH for gas.</span>
         </div>
       )}
 

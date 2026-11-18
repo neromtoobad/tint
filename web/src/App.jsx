@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createWalletClient, custom, http, numberToHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { KEY_MESSAGE, TintWallet, importViewingKey, initHash, keysFromSignature } from '@tint/sdk';
-import { networks, priceOf } from './chain.js';
+import { pickNetwork, priceOf } from './chain.js';
 import { relayerInfo, warmProvers } from './engine.js';
 import { short } from './format.js';
 import Connect from './Connect.jsx';
@@ -13,7 +13,7 @@ import { Activity, BalanceCard, Holdings, Keys, Visibility } from './parts.jsx';
 const ready = initHash();
 
 export default function App() {
-  const [net] = useState(networks[0]);
+  const [net] = useState(pickNetwork);
   const [session, setSession] = useState(null); // { account, walletClient, keys, viewOnly, label }
   const [wallet, setWallet] = useState(null);
   const [tick, setTick] = useState(0); // bumps after every sync

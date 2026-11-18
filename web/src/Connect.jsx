@@ -35,7 +35,10 @@ export default function Connect({ net, onUnlock }) {
           them, from a private account on Robinhood Chain that only you can read.
         </p>
         <p className="today mono">
-          <b>Today:</b> runs end to end on a local fork of Robinhood Chain: the private account, the relayer and agents. Testnet is next.
+          <b>Today:</b>{' '}
+          {net.testPools
+            ? 'on Robinhood Chain testnet: Robinhood’s test stock tokens, traded on small test pools Tint seeded, with test USDG. The private account, the relayer and agents.'
+            : 'runs end to end on a local fork of Robinhood Chain: the private account, the relayer and agents.'}
         </p>
 
         <div className="steps">

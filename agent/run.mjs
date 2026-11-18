@@ -21,7 +21,7 @@ const POOL = getAddress(env.POOL ?? dep.pool);
 const CHAIN_ID = Number(env.CHAIN_ID ?? dep.chainId);
 const START = BigInt(env.START_BLOCK ?? dep.startBlock ?? 0);
 const RELAYER_URL = (env.RELAYER_URL ?? 'http://127.0.0.1:8790').replace(/\/$/, '');
-const QUOTER = getAddress(env.QUOTER ?? '0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7');
+const QUOTER = getAddress(env.QUOTER ?? dep.quoter ?? '0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7');
 const CHECK_EVERY = Number(env.CHECK_EVERY ?? 60);
 
 const chain = defineChain({ id: CHAIN_ID, name: `chain ${CHAIN_ID}`, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [RPC] } } });

@@ -2,7 +2,9 @@
 import { createPublicClient, defineChain, http, parseUnits } from 'viem';
 
 const deployments = Object.fromEntries(
-  Object.values(import.meta.glob('./deployments/*.json', { eager: true, import: 'default' })).map((d) => [d.chainId, d]),
+  Object.values(import.meta.glob('./deployments/*.json', { eager: true, import: 'default' }))
+    .filter((d) => d.pool)
+    .map((d) => [d.chainId, d]),
 );
 
 const MAINNET_TOKENS = {
@@ -23,6 +25,9 @@ const NAMES = {
   META: 'Meta',
   AMZN: 'Amazon',
   GOOGL: 'Alphabet',
+  AMD: 'AMD',
+  PLTR: 'Palantir',
+  NFLX: 'Netflix',
 };
 
 const stocks = (tokens) =>
@@ -47,7 +52,20 @@ const NETWORKS = {
     // anvil's well-known test account 1: local fork only, holds fork-minted USDG
     localKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',
   },
+  // Robinhood Chain testnet: Robinhood's test stock tokens, traded against
+  // Tint Test USDG on small Uniswap v3 "test pools" seeded by tools/testnet-deploy.sh.
+  46630: {
+    id: 46630,
+    label: 'Robinhood Chain testnet',
+    short: 'Testnet',
+    relayer: import.meta.env.VITE_TESTNET_RELAYER_URL ?? 'http://127.0.0.1:8791',
+    testPools: true,
+  },
 };
+
+/** The assets listed in a deployment file (testnet), shaped like stocks(). */
+const fromDeployment = (d) =>
+  (d.assets ?? []).map((a) => ({ name: a.name ?? NAMES[a.symbol] ?? a.symbol, decimals: 18, cash: false, ...a }));
 
 export const networks = Object.values(NETWORKS)
   .filter((n) => deployments[n.id])
@@ -62,11 +80,24 @@ export const networks = Object.values(NETWORKS)
     return {
       ...n,
       chain,
+      assets: n.assets ?? fromDeployment(d),
+      explorer: n.explorer ?? d.explorer ?? null,
+      quoter: n.quoter ?? d.quoter,
+      // testnet only: the cash token has an open faucet (TestUSDG.faucet)
+      // a local anvil fork of testnet (FORK=1 tools/testnet-deploy.sh) gets the same public dev key as the mainnet fork
+      localKey: n.localKey ?? (/127\.0\.0\.1|localhost/.test(d.rpc ?? '') ? NETWORKS[31337].localKey : undefined),
+      testCash: d.assets?.find((a) => a.cash && /Test/.test(a.name ?? ''))?.address ?? null,
       pool: d.pool,
       startBlock: BigInt(d.startBlock ?? 0),
       client: createPublicClient({ chain, transport: http(undefined, { timeout: 30_000 }), pollingInterval: 1_000 }),
     };
   });
+
+/** The network to open: ?chain=<id>, else VITE_CHAIN_ID, else testnet if deployed, else the first. */
+export function pickNetwork() {
+  const want = Number(new URLSearchParams(window.location.search).get('chain') ?? import.meta.env.VITE_CHAIN_ID ?? 46630);
+  return networks.find((n) => n.id === want) ?? networks[0];
+}
 
 export const assetOf = (net, address) => net.assets.find((a) => a.address.toLowerCase() === String(address).toLowerCase());
 export const cashOf = (net) => net.assets.find((a) => a.cash);

@@ -21,9 +21,10 @@ const dep = env.DEPLOYMENT ? JSON.parse(readFileSync(env.DEPLOYMENT, 'utf8')) : 
 const RPC = env.RPC_URL ?? dep.rpc;
 const POOL = getAddress(env.POOL ?? dep.pool);
 const CHAIN_ID = Number(env.CHAIN_ID ?? dep.chainId);
-const CASH = getAddress(env.CASH_TOKEN ?? '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168'); // USDG
-const CASH_DECIMALS = Number(env.CASH_DECIMALS ?? 6);
-const QUOTER = getAddress(env.QUOTER ?? '0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7');
+const depCash = dep.assets?.find((a) => a.cash);
+const CASH = getAddress(env.CASH_TOKEN ?? depCash?.address ?? '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168'); // USDG
+const CASH_DECIMALS = Number(env.CASH_DECIMALS ?? depCash?.decimals ?? 6);
+const QUOTER = getAddress(env.QUOTER ?? dep.quoter ?? '0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7');
 const FEE_USD = env.FEE_USD ?? '0.50'; // one private transaction is ~4.5M gas (~$0.30 at 0.02 gwei)
 const PORT = Number(env.PORT ?? 8790);
 const ALLOW_ORIGIN = env.ALLOW_ORIGIN ?? '*';
