@@ -178,7 +178,7 @@ function Shell({ children, net, right, block }) {
       </header>
       <main>{children}</main>
       <footer className="foot mono">
-        <span>Tint · private stock wallet on Robinhood Chain</span>
+        <span>Tint · private stock agent on Robinhood Chain</span>
         <span>Proofs are made in this browser. Keys never leave it.</span>
       </footer>
     </div>

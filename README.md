@@ -1,6 +1,12 @@
 # Tint
 
-A private stock wallet on Robinhood Chain, with AI agents that invest for you. Hold USDG and stock tokens in one private balance, buy stocks, let an agent trade inside limits you sign, and send money, without anyone seeing who you are or what you hold.
+**A private AI agent that invests in stocks for you, on Robinhood Chain.**
+
+You set the rules once: which stocks, how much a week, the most per trade, and until when. The agent buys and sells real tokenized stocks inside those rules, and the contracts refuse anything outside them. Nobody watching the chain can see your strategy, what you hold, or that the trades are yours. You see everything, and a viewing key lets an accountant see it too.
+
+Under the agent is a private stock account: USDG and stock tokens in one balance that only you can read. You can also trade from it by hand, send from it and take money out.
+
+**Status:** the private account works end to end on a fork of Robinhood mainnet (below). The relayer and the agent are next; see "Not built yet".
 
 Plan: [PLAN.md](PLAN.md). Brand: [brand/BRAND.md](brand/BRAND.md).
 

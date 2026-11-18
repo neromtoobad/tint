@@ -23,16 +23,19 @@ export default function Connect({ net, onUnlock }) {
     <div className="hero">
       <div className="hero-copy">
         <span className="label mono">
-          <i className="dot" /> Private stock wallet
+          <i className="dot" /> Private stock agent
         </span>
         <h1>
-          Hold and trade stocks.
+          An agent that invests for you.
           <br />
-          <span className="accent">Nobody sees how much.</span>
+          <span className="accent">Nobody sees what you hold.</span>
         </h1>
         <p className="lead">
-          Tint keeps tokenized stocks in a shared private pool on Robinhood Chain. You buy, sell and send from it with a
-          proof made on this device, so the chain checks every trade without learning what you hold.
+          You set the rules once: which stocks, how much a week, the most per trade. Tint’s agent buys and sells inside
+          them, from a private account on Robinhood Chain that only you can read.
+        </p>
+        <p className="today mono">
+          <b>Today:</b> the private account works and you trade by hand. The agent is next.
         </p>
 
         <div className="steps">

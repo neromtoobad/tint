@@ -1,6 +1,8 @@
 # Tint — build plan
 
-Tint is a private stock wallet on Robinhood Chain, with AI agents that invest for you. You hold dollars (USDG) and stock tokens in one private balance. You can buy stocks, let an agent invest for you inside limits you set, and send money, and nobody watching the chain can see who you are, what you hold or who you pay.
+**Tint is a private AI agent that invests in stocks for you, on Robinhood Chain.** You set the rules once (which stocks, how much a week, the most per trade, until when). The agent buys and sells inside those rules, and nobody watching the chain can see your strategy, what you hold or that the trades are yours. Underneath is a private stock account (USDG and stock tokens in one hidden balance) that you can also trade from by hand, send from and take money out of.
+
+The agent is the headline; the account is what it runs on. (Changed Nov 18: Tint used to be pitched as "a private stock wallet with agents". A private wallet alone is what Rooq and Gloam already say.)
 
 Tagline idea: **"You can see out. They can't see in."**
 
@@ -125,16 +127,18 @@ The token launches with something people can use, not just a landing page. Rooq 
 | **0 (today)** | Register **tint.trade** + **@tinttrade**. Set up the X profile (name, banner, pinned "building Tint" post). Install Noir, `bb`, `cargo-stylus`. Public repo `neromtoobad/tint` | Handle and domain are yours. Tools work |
 | 1–3 | `transact` circuit, `TintPool`, `TintTree`, tests on a fork of Robinhood mainnet. A build post every day | Shield → unshield passes in `forge test` with real proofs |
 | 3–6 | `swap` circuit + Uniswap adapter: private USDG ⇄ NVDA/TSLA/SPY | A private buy and sell pass on a mainnet fork at real prices |
-| 6–8 | Web wallet v0: make keys, deposit, private buy and sell, withdraw, viewing key. Deploy on Robinhood Chain **testnet** (46630) with seeded test pools, verify the contracts. Landing page at tint.trade | You can deposit → buy privately → withdraw on the live site, with tx links |
-| **~9: launch** | Launch **$TINT on Pons**. Same hour: launch post with a 30–45 s screen recording of the real testnet loop, links to the app, repo and contracts. Tease agents as "next" | Token live, app live, fee wallet public |
-| 9–14 | Agent accounts in the circuits and contracts. Auto-invest first (no AI), then the AI agent. Telegram bot and Claude connector. First buyback post | An agent trades a budget on testnet, a stolen-key test is refused, and you can't withdraw without the spend key |
-| 14–20 | Relayer (no ETH needed), private send, payment links, pay in stocks, tax CSV, opt-in agent scoreboard | A new user trades and sends privately with zero ETH |
+| 6–8 ✅ | Web wallet v0: keys from one signature, note encryption, deposit, private buy and sell, send, withdraw, viewing key. Done Nov 18 on the mainnet fork, proofs in the browser | The loop runs from the browser with real proofs |
+| next | **Relayer**: sends each transaction for you and takes its fee from the private balance, so trades and take-outs stop pointing at your address | A buy from the site has the relayer as sender, not your wallet |
+| then | **Agent accounts** in the circuits and contracts: the agent key can only swap back into the same account, within the signed rules. Auto-invest first (no AI), then the Claude agent ("the model suggests, the code decides"). Telegram bot and Claude connector | An agent trades a budget, a stolen-key test is refused, and nothing leaves without the spend key |
+| then | Deploy on Robinhood Chain **testnet** (46630) with seeded test pools, verify the contracts. Landing page at tint.trade | The agent and the manual loop run on the live site, with tx links |
+| **launch** | Launch **$TINT on Pons**. Same hour: a 30–45 s recording of a private agent trading on testnet, links to the app, repo and contracts | Token live, app live, fee wallet public |
+| after | Private send links, pay in stocks, tax CSV, opt-in agent scoreboard | A new user trades and sends privately with zero ETH |
 | 20–32 | Outside review, then **mainnet beta with low deposit caps** ($100–$500) | Real deposits and real agent trades on Robinhood Chain mainnet |
 | Later | Clean-funds proofs, private USDC on Arbitrum One, perps | — |
 
-If a step runs late, the launch date moves. The rule stays: launch only when deposit → private buy → withdraw works on the live site. If that isn't ready by day 11, cut the Stylus tree (keep the Solidity one) and the viewing key UI, never the loop itself.
+If a step runs late, the launch date moves. The rule stays: launch only when the loop works on the live site, now with an agent trading in it. If that isn't ready by day 11, cut the Stylus tree (keep the Solidity one) and the viewing key UI, never the loop itself.
 
-Agents launch as a second wave, on purpose: launch day shows private buying, and about a week later "your private AI agent" gives a second reason to post and buy.
+Agents now ship before the launch (changed Nov 18): the launch shows the thing that is new, a private agent trading real stocks, instead of a private wallet. This moves the launch from ~day 9 to after the agent works on testnet.
 
 Testing uses `anvil --fork-url https://rpc.mainnet.chain.robinhood.com`, so swaps hit the real pools with fake money. Testnet has Robinhood's test stock tokens (TSLA, AMZN, PLTR, NFLX, AMD) but no real pools, so testnet swaps use small pools we seed, **labelled as test pools in the app**.
 
