@@ -8,6 +8,8 @@ import {ITintTree} from "../src/interfaces/ITintTree.sol";
 import {IUniswapV3Factory} from "../src/interfaces/IUniswapV3.sol";
 import {TransactVerifier, IVerifier} from "../src/verifiers/TransactVerifier.sol";
 import {SwapVerifier} from "../src/verifiers/SwapVerifier.sol";
+import {AgentTransactVerifier} from "../src/verifiers/AgentTransactVerifier.sol";
+import {AgentSwapVerifier} from "../src/verifiers/AgentSwapVerifier.sol";
 
 /// @notice Deploys the verifiers, pool and tree, and lists assets.
 ///
@@ -34,7 +36,9 @@ contract Deploy is Script {
 
         IVerifier tv = IVerifier(address(new TransactVerifier()));
         IVerifier sv = IVerifier(address(new SwapVerifier()));
-        TintPool pool = new TintPool(tv, sv, IUniswapV3Factory(factory), deployer);
+        IVerifier atv = IVerifier(address(new AgentTransactVerifier()));
+        IVerifier asv = IVerifier(address(new AgentSwapVerifier()));
+        TintPool pool = new TintPool(tv, sv, atv, asv, IUniswapV3Factory(factory), deployer);
         TintTree tree = new TintTree(address(pool));
         pool.setTree(ITintTree(address(tree)));
         for (uint256 i = 0; i < assets.length; i++) {
@@ -47,6 +51,8 @@ contract Deploy is Script {
         vm.serializeUint(o, "chainId", block.chainid);
         vm.serializeAddress(o, "transactVerifier", address(tv));
         vm.serializeAddress(o, "swapVerifier", address(sv));
+        vm.serializeAddress(o, "agentTransactVerifier", address(atv));
+        vm.serializeAddress(o, "agentSwapVerifier", address(asv));
         vm.serializeAddress(o, "tree", address(tree));
         vm.serializeAddress(o, "uniswapFactory", factory);
         string memory json = vm.serializeAddress(o, "pool", address(pool));

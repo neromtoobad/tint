@@ -8,6 +8,8 @@ import {TintTree} from "../src/TintTree.sol";
 import {ITintTree} from "../src/interfaces/ITintTree.sol";
 import {TransactVerifier, IVerifier} from "../src/verifiers/TransactVerifier.sol";
 import {SwapVerifier} from "../src/verifiers/SwapVerifier.sol";
+import {AgentTransactVerifier} from "../src/verifiers/AgentTransactVerifier.sol";
+import {AgentSwapVerifier} from "../src/verifiers/AgentSwapVerifier.sol";
 import {IUniswapV3Factory} from "../src/interfaces/IUniswapV3.sol";
 
 contract TestToken is ERC20 {
@@ -55,6 +57,8 @@ abstract contract TintPoolBase is Test {
         pool = new TintPool(
             IVerifier(address(new TransactVerifier())),
             IVerifier(address(new SwapVerifier())),
+            IVerifier(address(new AgentTransactVerifier())),
+            IVerifier(address(new AgentSwapVerifier())),
             IUniswapV3Factory(uniswapFactory),
             owner
         );
@@ -82,7 +86,10 @@ abstract contract TintPoolBase is Test {
         return abi.decode(vm.ffi(cmd), (TintPool.Proof));
     }
 
-    function _send(TintPool.Proof memory p, TintPool.ExtData memory ext, address from) internal returns (uint256 gasUsed) {
+    function _send(TintPool.Proof memory p, TintPool.ExtData memory ext, address from)
+        internal
+        returns (uint256 gasUsed)
+    {
         vm.prank(from);
         uint256 g = gasleft();
         pool.transact(p, ext);
@@ -201,8 +208,7 @@ contract TintPoolTest is TintPoolBase {
         // Spend the change note (leaf 2), paying a relayer 1 USDG from inside the proof.
         address carol = makeAddr("carol");
         TintPool.ExtData memory ext2 = _ext(carol, relayer, 1e6);
-        TintPool.Proof memory w2 =
-            _prove(uint160(address(usdg)), 0, 40e6, _ins(In(40e6, 222, 2)), new Out[](0), ext2);
+        TintPool.Proof memory w2 = _prove(uint160(address(usdg)), 0, 40e6, _ins(In(40e6, 222, 2)), new Out[](0), ext2);
         _send(w2, ext2, relayer);
         assertEq(usdg.balanceOf(carol), 39e6);
         assertEq(usdg.balanceOf(relayer), 1e6);
@@ -264,7 +270,8 @@ contract TintPoolTest is TintPoolBase {
     function test_rejectsChangedAmount() public {
         _deposit(100e6, 111);
         TintPool.ExtData memory ext = _ext(makeAddr("bob"), address(0), 0);
-        TintPool.Proof memory w = _prove(uint160(address(usdg)), 0, 50e6, _ins(In(100e6, 111, 0)), _outs(Out(50e6, 0, 5)), ext);
+        TintPool.Proof memory w =
+            _prove(uint160(address(usdg)), 0, 50e6, _ins(In(100e6, 111, 0)), _outs(Out(50e6, 0, 5)), ext);
         w.publicOut = 100e6;
         vm.expectRevert();
         pool.transact(w, ext);

@@ -15,6 +15,12 @@ import {IUniswapV3Factory, IUniswapV3Pool} from "./interfaces/IUniswapV3.sol";
 ///   - `transact`: deposit, withdraw and private transfer (circuits/transact)
 ///   - `swap`: buy or sell from inside the private balance on a public Uniswap v3
 ///     pool (circuits/swap). The trade is public; who made it is not.
+///   - `agentSwap`: the same trade made by an agent from an agent account. The
+///     proof (circuits/agent_swap) shows the trade follows the user's private
+///     rules: listed stocks only, a cap per buy, a cap on the relayer fee, one
+///     relayer, an end date, and everything stays in the account.
+///   - `agentTransact`: move money out of an agent account. The proof
+///     (circuits/agent_transact) needs the user's spend key AND the agent key.
 ///
 /// Trust model: the owner can list assets, set deposit caps, pause NEW deposits
 /// and set a swap fee of at most 1%. The owner cannot move anyone's tokens,
@@ -80,6 +86,8 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
 
     IVerifier public immutable transactVerifier;
     IVerifier public immutable swapVerifier;
+    IVerifier public immutable agentTransactVerifier;
+    IVerifier public immutable agentSwapVerifier;
     IUniswapV3Factory public immutable uniswapFactory;
     ITintTree public tree;
 
@@ -123,11 +131,18 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
     error AmountTooLarge();
     error PartialFill();
 
-    constructor(IVerifier transactVerifier_, IVerifier swapVerifier_, IUniswapV3Factory factory_, address owner_)
-        Ownable(owner_)
-    {
+    constructor(
+        IVerifier transactVerifier_,
+        IVerifier swapVerifier_,
+        IVerifier agentTransactVerifier_,
+        IVerifier agentSwapVerifier_,
+        IUniswapV3Factory factory_,
+        address owner_
+    ) Ownable(owner_) {
         transactVerifier = transactVerifier_;
         swapVerifier = swapVerifier_;
+        agentTransactVerifier = agentTransactVerifier_;
+        agentSwapVerifier = agentSwapVerifier_;
         uniswapFactory = factory_;
     }
 
@@ -140,6 +155,16 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
     // ------------------------------------------------------------------ deposit / withdraw / transfer
 
     function transact(Proof calldata p, ExtData calldata ext) external nonReentrant {
+        _transact(p, ext, transactVerifier);
+    }
+
+    /// @notice Money out of (or into) an agent account. Same proof layout as
+    /// `transact`; the proof needs both the user's spend key and the agent key.
+    function agentTransact(Proof calldata p, ExtData calldata ext) external nonReentrant {
+        _transact(p, ext, agentTransactVerifier);
+    }
+
+    function _transact(Proof calldata p, ExtData calldata ext, IVerifier verifier) internal {
         uint256 extHash = hashExtData(ext);
         if (
             p.root >= FIELD || p.publicAsset >= FIELD || p.publicIn >= FIELD || p.publicOut >= FIELD
@@ -147,7 +172,7 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
         ) revert NotAFieldElement();
         _checkRootAndNullifiers(p.root, p.nullifiers);
 
-        if (!transactVerifier.verify(p.proof, _transactInputs(p, extHash))) revert InvalidProof();
+        if (!verifier.verify(p.proof, _transactInputs(p, extHash))) revert InvalidProof();
 
         _spend(p.nullifiers);
         _insert(p.outCommitments[0], p.outCommitments[1], ext.encryptedOutput0, ext.encryptedOutput1);
@@ -172,18 +197,33 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
     // ------------------------------------------------------------------ private buy / sell
 
     function swap(SwapProof calldata p, SwapExt calldata ext) external nonReentrant returns (uint256 amountOut) {
+        return _swap(p, ext, false);
+    }
+
+    /// @notice A trade by an agent, inside an agent account, within the user's rules.
+    function agentSwap(SwapProof calldata p, SwapExt calldata ext) external nonReentrant returns (uint256 amountOut) {
+        return _swap(p, ext, true);
+    }
+
+    function _swap(SwapProof calldata p, SwapExt calldata ext, bool agent) internal returns (uint256 amountOut) {
         if (block.timestamp > ext.deadline) revert Expired();
         uint256 extHash = hashSwapExt(ext);
         if (
             p.root >= FIELD || p.assetIn >> 160 != 0 || p.assetOut >> 160 != 0 || p.amountIn >= MAX_AMOUNT
                 || p.minOut >= MAX_AMOUNT || p.changeCommitment >= FIELD || p.outInner >= FIELD
         ) revert NotAFieldElement();
+        // An agent proof also takes the fee and deadline as inputs; keep them in range.
+        if (agent && (ext.fee >= MAX_AMOUNT || ext.deadline >> 64 != 0)) revert NotAFieldElement();
         address assetIn = address(uint160(p.assetIn));
         address assetOut = address(uint160(p.assetOut));
         if (!assets[assetOut].listed) revert AssetNotListed(assetOut);
         _checkRootAndNullifiers(p.root, p.nullifiers);
 
-        if (!swapVerifier.verify(p.proof, _swapInputs(p, extHash))) revert InvalidProof();
+        if (agent) {
+            if (!agentSwapVerifier.verify(p.proof, _agentSwapInputs(p, ext, extHash))) revert InvalidProof();
+        } else {
+            if (!swapVerifier.verify(p.proof, _swapInputs(p, extHash))) revert InvalidProof();
+        }
         _spend(p.nullifiers);
 
         // Fees come out of amountIn, in assetIn.
@@ -222,10 +262,7 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
 
     // ------------------------------------------------------------------ owner
 
-    function configureAsset(address asset, bool listed, uint128 maxDeposit, uint128 maxPoolBalance)
-        external
-        onlyOwner
-    {
+    function configureAsset(address asset, bool listed, uint128 maxDeposit, uint128 maxPoolBalance) external onlyOwner {
         assets[asset] = AssetConfig(listed, maxDeposit, maxPoolBalance);
         emit AssetConfigured(asset, listed, maxDeposit, maxPoolBalance);
     }
@@ -297,6 +334,23 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
         pi[9] = bytes32(extHash);
     }
 
+    function _agentSwapInputs(SwapProof calldata p, SwapExt calldata ext, uint256 extHash)
+        internal
+        pure
+        returns (bytes32[] memory pi)
+    {
+        // Same order as the parameters of circuits/agent_swap/src/main.nr: the swap
+        // inputs, then the relayer, fee and deadline the rules are checked against.
+        bytes32[] memory base = _swapInputs(p, extHash);
+        pi = new bytes32[](13);
+        for (uint256 i = 0; i < 10; i++) {
+            pi[i] = base[i];
+        }
+        pi[10] = bytes32(uint256(uint160(ext.relayer)));
+        pi[11] = bytes32(ext.fee);
+        pi[12] = bytes32(ext.deadline);
+    }
+
     function _sellOnUniswap(address tokenIn, address tokenOut, uint24 fee, uint256 amount)
         internal
         returns (uint256 received)
@@ -310,9 +364,8 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
         activeTokenIn = tokenIn;
         activeAmountIn = amount;
         uint256 before = IERC20(tokenOut).balanceOf(address(this));
-        IUniswapV3Pool(pool).swap(
-            address(this), zeroForOne, int256(amount), zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1, ""
-        );
+        IUniswapV3Pool(pool)
+            .swap(address(this), zeroForOne, int256(amount), zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1, "");
         // The callback clears activePool once it has paid; if it never ran, nothing was sold.
         if (activePool != address(0)) revert PartialFill();
         received = IERC20(tokenOut).balanceOf(address(this)) - before;
