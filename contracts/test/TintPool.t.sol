@@ -7,6 +7,8 @@ import {TintPool} from "../src/TintPool.sol";
 import {TintTree} from "../src/TintTree.sol";
 import {ITintTree} from "../src/interfaces/ITintTree.sol";
 import {TransactVerifier, IVerifier} from "../src/verifiers/TransactVerifier.sol";
+import {SwapVerifier} from "../src/verifiers/SwapVerifier.sol";
+import {IUniswapV3Factory} from "../src/interfaces/IUniswapV3.sol";
 
 contract TestToken is ERC20 {
     uint8 private immutable dec;
@@ -49,9 +51,13 @@ abstract contract TintPoolBase is Test {
     uint256 aliceKey = uint256(keccak256("alice spend key")) % FIELD;
     uint256[] leaves; // every leaf the pool has inserted, in order
 
-    function _deploy() internal {
-        IVerifier verifier = new TransactVerifier();
-        pool = new TintPool(verifier, owner);
+    function _deploy(address uniswapFactory) internal {
+        pool = new TintPool(
+            IVerifier(address(new TransactVerifier())),
+            IVerifier(address(new SwapVerifier())),
+            IUniswapV3Factory(uniswapFactory),
+            owner
+        );
         tree = new TintTree(address(pool));
         vm.prank(owner);
         pool.setTree(ITintTree(address(tree)));
@@ -85,6 +91,54 @@ abstract contract TintPoolBase is Test {
         leaves.push(p.outCommitments[1]);
     }
 
+    /// @dev Real swap proof from sdk/scripts/ffi-swap.mjs.
+    function _proveSwap(
+        address assetIn,
+        address assetOut,
+        uint256 amountIn,
+        uint256 minOut,
+        In[] memory ins,
+        uint256 changeBlinding,
+        uint256 outBlinding,
+        TintPool.SwapExt memory ext
+    ) internal returns (TintPool.SwapProof memory) {
+        string[] memory cmd = new string[](3);
+        cmd[0] = "node";
+        cmd[1] = "../sdk/scripts/ffi-swap.mjs";
+        cmd[2] = vm.toString(
+            abi.encode(
+                aliceKey,
+                uint256(uint160(assetIn)),
+                uint256(uint160(assetOut)),
+                amountIn,
+                minOut,
+                leaves,
+                ins,
+                changeBlinding,
+                outBlinding,
+                ext
+            )
+        );
+        return abi.decode(vm.ffi(cmd), (TintPool.SwapProof));
+    }
+
+    function _swapExt(uint24 poolFee) internal view returns (TintPool.SwapExt memory) {
+        return TintPool.SwapExt(address(0), 0, poolFee, block.timestamp + 600, hex"", hex"");
+    }
+
+    /// @dev Sends a swap and records the two new leaves (change, bought).
+    function _sendSwap(TintPool.SwapProof memory p, TintPool.SwapExt memory ext, address from)
+        internal
+        returns (uint256 amountOut, uint256 gasUsed)
+    {
+        vm.prank(from);
+        uint256 g = gasleft();
+        amountOut = pool.swap(p, ext);
+        gasUsed = g - gasleft();
+        leaves.push(p.changeCommitment);
+        leaves.push(tree.hash3(p.assetOut, amountOut, p.outInner));
+    }
+
     function _ins(In memory a) internal pure returns (In[] memory r) {
         r = new In[](1);
         r[0] = a;
@@ -104,7 +158,7 @@ contract TintPoolTest is TintPoolBase {
     TestToken usdg;
 
     function setUp() public {
-        _deploy();
+        _deploy(address(0));
         usdg = new TestToken("USDG", 6);
         vm.prank(owner);
         pool.configureAsset(address(usdg), true, 1_000e6, 10_000e6);
