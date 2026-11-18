@@ -91,6 +91,7 @@ export const tintPoolAbi = [
       { name: 'publicAsset', type: 'uint256', indexed: false },
       { name: 'publicIn', type: 'uint256', indexed: false },
       { name: 'publicOut', type: 'uint256', indexed: false },
+      { name: 'relayerFee', type: 'uint256', indexed: false },
     ],
   },
   {

@@ -97,7 +97,7 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
     event NewCommitment(uint256 indexed commitment, uint32 index, bytes encryptedOutput);
     event NewNullifier(uint256 indexed nullifier);
     /// @notice The public side of a transact call (already visible in its calldata).
-    event Transacted(uint256 publicAsset, uint256 publicIn, uint256 publicOut);
+    event Transacted(uint256 publicAsset, uint256 publicIn, uint256 publicOut, uint256 relayerFee);
     event Swapped(address indexed assetIn, address indexed assetOut, uint256 amountSold, uint256 amountOut);
     event AssetConfigured(address indexed asset, bool listed, uint128 maxDeposit, uint128 maxPoolBalance);
     event DepositsPaused(bool paused);
@@ -151,7 +151,7 @@ contract TintPool is ReentrancyGuard, Ownable2Step {
 
         _spend(p.nullifiers);
         _insert(p.outCommitments[0], p.outCommitments[1], ext.encryptedOutput0, ext.encryptedOutput1);
-        emit Transacted(p.publicAsset, p.publicIn, p.publicOut);
+        emit Transacted(p.publicAsset, p.publicIn, p.publicOut, ext.fee);
 
         if (p.publicIn > 0 || p.publicOut > 0) {
             if (p.publicAsset == 0 || p.publicAsset >> 160 != 0) revert BadAsset();

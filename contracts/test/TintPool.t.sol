@@ -224,6 +224,23 @@ contract TintPoolTest is TintPoolBase {
         assertEq(usdg.balanceOf(address(pool)), 100e6);
     }
 
+    function test_privateTransferPaysRelayer() public {
+        _deposit(100e6, 111);
+        // A relayed private send: the fee leaves the pool as publicOut with no recipient,
+        // so the relayer is paid and the sender's wallet never touches the chain.
+        uint256 bobOwner = tree.hash2(1, 98765);
+        Out[] memory outs = new Out[](2);
+        outs[0] = Out(30e6, bobOwner, 333);
+        outs[1] = Out(69e6, 0, 444);
+        TintPool.ExtData memory ext = _ext(address(0), relayer, 1e6);
+        TintPool.Proof memory p = _prove(uint160(address(usdg)), 0, 1e6, _ins(In(100e6, 111, 0)), outs, ext);
+        vm.expectEmit(address(pool));
+        emit TintPool.Transacted(uint160(address(usdg)), 0, 1e6, 1e6);
+        _send(p, ext, relayer);
+        assertEq(usdg.balanceOf(relayer), 1e6);
+        assertEq(usdg.balanceOf(address(pool)), 99e6);
+    }
+
     function test_rejectsDoubleSpend() public {
         _deposit(100e6, 111);
         address bob = makeAddr("bob");
