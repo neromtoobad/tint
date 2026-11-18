@@ -9,7 +9,15 @@
   },
   "dependencies": {
     "@aztec-foundation/bb.js": "6.0.0",
+    "@noble/ciphers": "^2.0.1",
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
     "@noir-lang/noir_js": "1.0.0",
     "viem": "2.38.0"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./node": "./src/node.js"
   }
 }
