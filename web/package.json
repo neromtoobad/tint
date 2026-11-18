@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "circuits": "mkdir -p public/circuits && cp ../circuits/transact/target/transact.json ../circuits/swap/target/swap.json public/circuits/ && mkdir -p src/deployments && cp ../contracts/deployments/*.json src/deployments/ 2>/dev/null || true",
+    "circuits": "mkdir -p public/circuits && cp ../circuits/transact/target/transact.json ../circuits/swap/target/swap.json ../circuits/agent_swap/target/agent_swap.json ../circuits/agent_transact/target/agent_transact.json public/circuits/ && mkdir -p src/deployments && cp ../contracts/deployments/*.json src/deployments/ 2>/dev/null || true",
     "dev": "npm run circuits && vite --port 5180 --strictPort",
     "build": "npm run circuits && vite build",
     "preview": "vite preview --port 5181"

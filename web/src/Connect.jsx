@@ -35,7 +35,7 @@ export default function Connect({ net, onUnlock }) {
           them, from a private account on Robinhood Chain that only you can read.
         </p>
         <p className="today mono">
-          <b>Today:</b> the private account works and you trade by hand. The agent is next.
+          <b>Today:</b> runs end to end on a local fork of Robinhood Chain: the private account, the relayer and agents. Testnet is next.
         </p>
 
         <div className="steps">

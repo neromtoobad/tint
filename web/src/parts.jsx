@@ -89,6 +89,7 @@ function describe(net, h) {
   if (h.type === 'deposit') return { title: 'Added', detail: q };
   if (h.type === 'withdraw') return { title: 'Took out', detail: q };
   if (h.type === 'send') return { title: 'Sent privately', detail: q };
+  if (h.type === 'fund-agent') return { title: `Funded agent “${h.name ?? h.agent + 1}”`, detail: q };
   if (h.type === 'receive') return { title: 'Received privately', detail: q };
   return { title: 'Combined notes', detail: q };
 }
@@ -110,7 +111,7 @@ export function Activity({ net, history, synced }) {
             const d = describe(net, h);
             return (
               <div className="tr" key={h.tx + h.type}>
-                <span className={`kind mono ${h.type}`}>{{ swap: 'Trade', deposit: 'In', withdraw: 'Out', send: 'Sent', receive: 'Got' }[h.type] ?? 'Note'}</span>
+                <span className={`kind mono ${h.type}`}>{{ swap: 'Trade', deposit: 'In', withdraw: 'Out', send: 'Sent', receive: 'Got', 'fund-agent': 'Agent' }[h.type] ?? 'Note'}</span>
                 <span className="grow">
                   <b>{d.title}</b>
                   <span className="muted sm num">{d.detail}</span>

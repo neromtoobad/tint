@@ -7,6 +7,7 @@ import { relayerInfo, warmProvers } from './engine.js';
 import { short } from './format.js';
 import Connect from './Connect.jsx';
 import Trade from './Trade.jsx';
+import Agents from './Agents.jsx';
 import { Activity, BalanceCard, Holdings, Keys, Visibility } from './parts.jsx';
 
 const ready = initHash();
@@ -154,6 +155,7 @@ export default function App() {
         <div className="grid">
           <div className="col">
             <BalanceCard net={net} balances={balances} prices={prices} synced={synced} error={syncError} viewOnly={session.viewOnly} />
+            {!session.viewOnly && <Agents net={net} wallet={wallet} session={session} prices={prices} relayer={relayer} synced={synced} tick={tick} onDone={sync} />}
             <Holdings net={net} balances={balances} prices={prices} synced={synced} />
             <Activity net={net} history={history} synced={synced} />
           </div>

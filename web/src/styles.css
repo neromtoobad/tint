@@ -657,6 +657,107 @@ b {
   margin-top: 4px;
 }
 
+/* ---------- agents ---------- */
+.agents {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.agent {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #fff;
+}
+.agent.new {
+  background: var(--paper);
+}
+.agent-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agent-head > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agent-head b {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.agent-head .right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.agent-total {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.chip.live {
+  border-color: var(--cobalt);
+  color: var(--cobalt);
+}
+.rules {
+  background: var(--paper);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+}
+.rules ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  columns: 2;
+  column-gap: 24px;
+}
+.rules li {
+  break-inside: avoid;
+  margin: 2px 0;
+}
+.table.compact .tr {
+  padding: 6px 0;
+}
+.trades {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.keybox {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.keybox p {
+  margin: 0 0 8px;
+}
+.row.wrap {
+  flex-wrap: wrap;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.form-grid .field {
+  margin: 0;
+}
+select.input {
+  appearance: auto;
+}
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rules ul {
+    columns: 1;
+  }
+}
+
 @media (max-width: 900px) {
   .grid,
   .hero {
