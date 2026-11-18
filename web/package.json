@@ -1,0 +1,30 @@
+{
+  "name": "@tint/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "circuits": "mkdir -p public/circuits && cp ../circuits/transact/target/transact.json ../circuits/swap/target/swap.json public/circuits/ && mkdir -p src/deployments && cp ../contracts/deployments/*.json src/deployments/ 2>/dev/null || true",
+    "dev": "npm run circuits && vite --port 5180 --strictPort",
+    "build": "npm run circuits && vite build",
+    "preview": "vite preview --port 5181"
+  },
+  "dependencies": {
+    "@aztec-foundation/bb.js": "6.0.0",
+    "@noble/ciphers": "2.0.1",
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.0.1",
+    "@noir-lang/noir_js": "1.0.0",
+    "@tint/sdk": "file:../sdk",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "viem": "2.38.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.0.2",
+    "vite": "7.1.5"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
