@@ -8,9 +8,11 @@
 // every asset. The inner hash lets the pool contract finish a note whose amount
 // it only learns after a swap, without the owner ever appearing on chain.
 //
-// Spending a note publishes its nullifier = H(commitment, leaf_index, spend_key).
-// The pool stores nullifiers, so a note can be spent once, and nobody can tell
-// which leaf a nullifier belongs to.
+// Spending a note publishes its nullifier = H(commitment, leaf_index, nk), where
+// nk = H(NK_TAG, spend_key) is the nullifier key. The pool stores nullifiers, so a
+// note can be spent once, and nobody can tell which leaf a nullifier belongs to.
+// The viewing key a user can hand to an accountant includes nk, so it shows which
+// notes were spent, but it can't spend (that needs spend_key itself).
 //
 // Every hash here takes at most 3 inputs, so it is a single Poseidon2
 // permutation. The pool contract computes the same hashes on chain
@@ -20,6 +22,7 @@ use poseidon::poseidon2::Poseidon2;
 
 pub global TREE_DEPTH: u32 = 20;
 pub global OWNER_TAG: Field = 1;
+pub global NK_TAG: Field = 2;
 // Amounts and public values are kept under 2^112 so sums can never wrap the field.
 pub global AMOUNT_BITS: u32 = 112;
 
@@ -43,8 +46,12 @@ pub fn commitment(asset: Field, amount: Field, inner: Field) -> Field {
     hash3(asset, amount, inner)
 }
 
-pub fn nullifier(commitment: Field, leaf_index: Field, spend_key: Field) -> Field {
-    hash3(commitment, leaf_index, spend_key)
+pub fn nullifier_key(spend_key: Field) -> Field {
+    hash2(NK_TAG, spend_key)
+}
+
+pub fn nullifier(commitment: Field, leaf_index: Field, nk: Field) -> Field {
+    hash3(commitment, leaf_index, nk)
 }
 
 pub fn assert_amount(x: Field) {
@@ -76,13 +83,14 @@ pub fn spend_inputs(
     in_path: [[Field; TREE_DEPTH]; 2],
 ) -> Field {
     let owner = owner_of(spend_key);
+    let nk = nullifier_key(spend_key);
     let mut total = 0;
     for i in 0..2 {
         assert_amount(in_amount[i]);
         let c = commitment(asset, in_amount[i], inner_hash(owner, in_blinding[i]));
         let r = merkle_root(c, in_index[i], in_path[i]);
         assert((r - root) * in_amount[i] == 0, "input note not in tree");
-        assert(nullifiers[i] == nullifier(c, in_index[i], spend_key), "bad nullifier");
+        assert(nullifiers[i] == nullifier(c, in_index[i], nk), "bad nullifier");
         total += in_amount[i];
     }
     assert(nullifiers[0] != nullifiers[1], "same note spent twice");

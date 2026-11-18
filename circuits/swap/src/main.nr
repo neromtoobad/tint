@@ -103,7 +103,7 @@ fn buy_with_part_of_a_note() {
     let s = setup();
     main(
         s.root,
-        [notes::nullifier(s.note, 0, s.sk), notes::nullifier(s.dummy, 0, s.sk)],
+        [notes::nullifier(s.note, 0, notes::nullifier_key(s.sk)), notes::nullifier(s.dummy, 0, notes::nullifier_key(s.sk))],
         USDG,
         60,
         NVDA,
@@ -127,7 +127,7 @@ fn cannot_sell_more_than_held() {
     let s = setup();
     main(
         s.root,
-        [notes::nullifier(s.note, 0, s.sk), notes::nullifier(s.dummy, 0, s.sk)],
+        [notes::nullifier(s.note, 0, notes::nullifier_key(s.sk)), notes::nullifier(s.dummy, 0, notes::nullifier_key(s.sk))],
         USDG,
         101,
         NVDA,
@@ -153,7 +153,7 @@ fn cannot_sell_a_different_asset_than_the_note() {
     let fake = commitment(NVDA, 100, inner_hash(s.owner, 1));
     main(
         s.root,
-        [notes::nullifier(fake, 0, s.sk), notes::nullifier(s.dummy, 0, s.sk)],
+        [notes::nullifier(fake, 0, notes::nullifier_key(s.sk)), notes::nullifier(s.dummy, 0, notes::nullifier_key(s.sk))],
         NVDA,
         100,
         USDG,
@@ -178,7 +178,7 @@ fn bought_note_goes_to_the_spender() {
     let someone_else = owner_of(777);
     main(
         s.root,
-        [notes::nullifier(s.note, 0, s.sk), notes::nullifier(s.dummy, 0, s.sk)],
+        [notes::nullifier(s.note, 0, notes::nullifier_key(s.sk)), notes::nullifier(s.dummy, 0, notes::nullifier_key(s.sk))],
         USDG,
         100,
         NVDA,
@@ -202,7 +202,7 @@ fn cannot_swap_to_the_same_asset() {
     let s = setup();
     main(
         s.root,
-        [notes::nullifier(s.note, 0, s.sk), notes::nullifier(s.dummy, 0, s.sk)],
+        [notes::nullifier(s.note, 0, notes::nullifier_key(s.sk)), notes::nullifier(s.dummy, 0, notes::nullifier_key(s.sk))],
         USDG,
         100,
         USDG,

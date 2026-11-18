@@ -89,7 +89,7 @@ fn deposit_then_withdraw() {
         100,
         0,
         5,
-        [nullifier(d0, 0, sk), nullifier(d1, 0, sk)],
+        [nullifier(d0, 0, notes::nullifier_key(sk)), nullifier(d1, 0, notes::nullifier_key(sk))],
         [out0, out1],
         asset,
         sk,
@@ -115,7 +115,7 @@ fn deposit_then_withdraw() {
         0,
         60,
         6,
-        [nullifier(out0, 0, sk), nullifier(d, 0, sk)],
+        [nullifier(out0, 0, notes::nullifier_key(sk)), nullifier(d, 0, notes::nullifier_key(sk))],
         [change, zero],
         asset,
         sk,
@@ -146,7 +146,7 @@ fn cannot_withdraw_more_than_held() {
         0,
         101,
         0,
-        [nullifier(note, 0, sk), nullifier(d, 0, sk)],
+        [nullifier(note, 0, notes::nullifier_key(sk)), nullifier(d, 0, notes::nullifier_key(sk))],
         [o0, o1],
         asset,
         sk,
@@ -180,7 +180,7 @@ fn cannot_spend_someone_elses_note() {
         0,
         100,
         0,
-        [nullifier(mine, 0, sk), nullifier(d, 0, sk)],
+        [nullifier(mine, 0, notes::nullifier_key(sk)), nullifier(d, 0, notes::nullifier_key(sk))],
         [o0, o1],
         asset,
         sk,
@@ -211,7 +211,7 @@ fn cannot_withdraw_a_different_token() {
         0,
         100,
         0,
-        [nullifier(note, 0, sk), nullifier(d, 0, sk)],
+        [nullifier(note, 0, notes::nullifier_key(sk)), nullifier(d, 0, notes::nullifier_key(sk))],
         [o0, o1],
         asset,
         sk,
@@ -233,7 +233,7 @@ fn cannot_spend_one_note_twice_in_one_tx() {
     let empty_path = empty_path();
     let note = commitment(asset, 100, inner_hash(owner, 1));
     let root = merkle_root(note, 0, empty_path);
-    let n = nullifier(note, 0, sk);
+    let n = nullifier(note, 0, notes::nullifier_key(sk));
     let o0 = commitment(asset, 200, inner_hash(owner, 3));
     let o1 = commitment(asset, 0, inner_hash(owner, 4));
     main(
