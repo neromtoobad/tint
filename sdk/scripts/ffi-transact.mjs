@@ -13,7 +13,7 @@ import { decodeAbiParameters, encodeAbiParameters, toHex } from 'viem';
 import { initHash } from '../src/hash.js';
 import { MerkleTree } from '../src/tree.js';
 import { buildTransact } from '../src/transact.js';
-import { Prover } from '../src/prover.js';
+import { proverFor } from '../src/node.js';
 
 const REQUEST = [
   { type: 'uint256' },
@@ -67,7 +67,7 @@ const { circuitInputs, publicData } = buildTransact({
   ext,
 });
 
-const prover = await Prover.create('transact');
+const prover = await proverFor('transact');
 const { proof } = await prover.prove(circuitInputs);
 await prover.destroy();
 

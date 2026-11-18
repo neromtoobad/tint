@@ -4,3 +4,7 @@ export * from './tree.js';
 export * from './transact.js';
 export * from './swap.js';
 export * from './prover.js';
+export * from './keys.js';
+export * from './encrypt.js';
+export * from './abi.js';
+export * from './wallet.js';

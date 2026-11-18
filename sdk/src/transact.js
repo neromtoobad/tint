@@ -1,7 +1,7 @@
 // Builds and proves a `transact` call (deposit, withdraw or private transfer).
 import { encodeAbiParameters, keccak256 } from 'viem';
 import { FIELD, randomField, toHex } from './hash.js';
-import { makeNote, nullifierOf, ownerOf } from './notes.js';
+import { makeNote, nullifierKeyOf, nullifierOf, ownerOf } from './notes.js';
 import { emptyPath } from './tree.js';
 
 const EXT_DATA_ABI = [
@@ -46,7 +46,7 @@ export function buildTransact({ tree, spendKey, asset, inputs = [], outputs = []
   const root = tree.root();
   const inNotes = ins.map((n) => makeNote({ asset, amount: n.amount, owner: self, blinding: n.blinding }));
   const inPaths = ins.map((n) => (BigInt(n.amount) === 0n ? emptyPath() : tree.path(Number(n.index))));
-  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, spendKey));
+  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nullifierKeyOf(spendKey)));
   const outNotes = outs.map((o) =>
     makeNote({ asset, amount: o.amount, owner: o.owner ?? self, blinding: o.blinding ?? randomField() }),
   );

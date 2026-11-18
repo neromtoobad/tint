@@ -13,7 +13,7 @@ import { decodeAbiParameters, encodeAbiParameters, toHex } from 'viem';
 import { initHash } from '../src/hash.js';
 import { MerkleTree } from '../src/tree.js';
 import { buildSwap } from '../src/swap.js';
-import { Prover } from '../src/prover.js';
+import { proverFor } from '../src/node.js';
 
 const EXT = {
   type: 'tuple',
@@ -75,7 +75,7 @@ const { circuitInputs, publicData } = buildSwap({
   ext,
 });
 
-const prover = await Prover.create('swap');
+const prover = await proverFor('swap');
 const { proof } = await prover.prove(circuitInputs);
 await prover.destroy();
 

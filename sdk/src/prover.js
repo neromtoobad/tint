@@ -1,17 +1,12 @@
-// Proves a Tint circuit (transact or swap) for the EVM verifier, with noir_js + bb.js.
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+// Proves a Tint circuit (transact or swap) for the EVM verifier, with noir_js +
+// bb.js. Works in Node and in the browser (pass the compiled circuit JSON).
 import { Noir } from '@noir-lang/noir_js';
 import { Barretenberg, UltraHonkBackend } from '@aztec-foundation/bb.js';
 
-export const circuitPath = (name) =>
-  fileURLToPath(new URL(`../../circuits/${name}/target/${name}.json`, import.meta.url));
-
 export class Prover {
-  /** @param name 'transact' or 'swap' (built by circuits/build.sh) */
-  static async create(name, path = circuitPath(name)) {
-    const circuit = JSON.parse(readFileSync(path, 'utf8'));
-    const api = await Barretenberg.new();
+  /** @param circuit compiled circuit JSON (circuits/<name>/target/<name>.json) */
+  static async create(circuit, bbOptions) {
+    const api = await Barretenberg.new(bbOptions);
     return new Prover(circuit, api);
   }
 

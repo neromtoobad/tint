@@ -2,7 +2,7 @@
 // for another, on a public Uniswap v3 pool.
 import { encodeAbiParameters, keccak256 } from 'viem';
 import { FIELD, randomField, toHex } from './hash.js';
-import { commitmentOf, innerHash, makeNote, nullifierOf, ownerOf } from './notes.js';
+import { commitmentOf, innerHash, makeNote, nullifierKeyOf, nullifierOf, ownerOf } from './notes.js';
 import { emptyPath } from './tree.js';
 
 const SWAP_EXT_ABI = [
@@ -48,7 +48,7 @@ export function buildSwap({ tree, spendKey, assetIn, assetOut, inputs, amountIn,
   if (amountIn === 0n || amountIn > total) throw new Error(`can trade 1..${total}, asked ${amountIn}`);
 
   const root = tree.root();
-  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, spendKey));
+  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nullifierKeyOf(spendKey)));
   const change = makeNote({ asset: assetIn, amount: total - amountIn, owner: self, blinding: changeBlinding ?? randomField() });
   outBlinding = BigInt(outBlinding ?? randomField());
   const outInner = innerHash(self, outBlinding);
