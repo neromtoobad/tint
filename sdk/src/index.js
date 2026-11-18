@@ -9,3 +9,4 @@ export * from './encrypt.js';
 export * from './abi.js';
 export * from './wallet.js';
 export * from './agent.js';
+export * from './autoinvest.js';
