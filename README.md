@@ -6,7 +6,7 @@ You set the rules once: which stocks, how much a week, the most per trade, and u
 
 Under the agent is a private stock account: USDG and stock tokens in one balance that only you can read. You can also trade from it by hand, send from it and take money out.
 
-**Status:** the private account works end to end on a fork of Robinhood mainnet (below). The relayer and the agent are next; see "Not built yet".
+**Status:** the private account and the relayer work end to end on a fork of Robinhood mainnet (below). The agent is next; see "Not built yet".
 
 Plan: [PLAN.md](PLAN.md). Brand: [brand/BRAND.md](brand/BRAND.md).
 
@@ -14,7 +14,9 @@ Plan: [PLAN.md](PLAN.md). Brand: [brand/BRAND.md](brand/BRAND.md).
 
 A **web wallet** ([web/](web)) that runs the whole loop on a local fork of Robinhood Chain mainnet, with the real USDG and stock tokens and their real Uniswap pools: add USDG, buy a stock privately, sell it, send to another Tint user, take money out, and open the balance read-only with a viewing key. Every proof is made in the browser in under a second. Nothing is deployed to a public network yet.
 
-![The wallet after a buy, a sell and a take-out on the local fork](docs/wallet-take-out.jpg)
+![A take-out sent through the relayer on the local fork](docs/wallet-relayed-take-out.jpg)
+
+**Relayer** ([relayer/](relayer)): the browser makes the proof, and the relayer sends the transaction from its own address and takes a fee ($0.50 by default) out of the private balance, in whatever the action spends. The relayer's address and fee are inside the proof, so it can't change the trade, the recipient or its own pay; it can only send it or refuse. On the fork, a relayed buy, sell, private send and take-out all landed with the relayer as the transaction sender, and the user's wallet appears only on the deposit.
 
 Measured in the browser on the fork (real transactions, receipt gas):
 
@@ -25,6 +27,9 @@ Measured in the browser on the fork (real transactions, receipt gas):
 | Sell 0.6 NVDA (got 90.60 USDG) | 0.4 s | 4.49M |
 | Take out 390.60 USDG to a new address (2 notes in) | 0.3 s | 4.37M |
 | Send 0.1 NVDA to a Tint address | 0.5 s | 4.33M |
+| Buy NVDA with 100 USDG, through the relayer (+0.50 USDG fee) | 0.4 s | 4.55M |
+| Send 25 USDG privately, through the relayer | 0.4 s | 4.36M |
+| Take out 150 USDG, through the relayer | 0.5 s | 4.38M |
 
 At Robinhood Chain's 0.02 gwei, 4.5M gas is about 0.00009 ETH per action.
 
@@ -41,11 +46,12 @@ At Robinhood Chain's 0.02 gwei, 4.5M gas is about 0.00009 ETH per action.
 | Note encryption (X25519 + ChaCha20-Poly1305), so only the owner can read a note | [sdk/src/encrypt.js](sdk/src/encrypt.js) |
 | Wallet engine: rebuilds the private balance and history from pool events, builds each action | [sdk/src/wallet.js](sdk/src/wallet.js) |
 | Web wallet: unlock, holdings with Uniswap prices, buy, sell, add, send, take out, viewing key | [web/src](web/src) |
+| Relayer: checks the fee and its own address in the proof, simulates, sends one transaction at a time | [relayer/src/server.js](relayer/src/server.js) |
 | Deploy script and local fork setup | [contracts/script/Deploy.s.sol](contracts/script/Deploy.s.sol), [tools/dev-fork.sh](tools/dev-fork.sh) |
 
-**What is private today:** balances and holdings (never on chain), and who a private send went to and how much. **What is not, yet:** your own wallet sends each transaction, so the explorer shows your address as the sender of each buy, sell and take-out, with the pair and size. A relayer that sends the transaction for you (the pool already pays relayer fees) is the next piece; until it runs, Tint hides what you hold, not that you traded.
+**What is private today:** balances and holdings (never on chain), who a private send went to and how much, and, with the relayer, who made a buy, sell, send or take-out: the explorer shows the relayer as the sender. **What is not:** adding money always comes from your own wallet, so a deposit shows your address and the amount. Trades show the pair and the size. A relayed private send shows which token paid the fee. The relayer itself sees your IP address and the transaction (never your keys). Taking money out to the same address you deposited from links the two again, so the wallet suggests a new address.
 
-**Not built yet:** the relayer, agent accounts, the testnet deployment, the Stylus tree. See the phases in PLAN.md.
+**Not built yet:** agent accounts, the testnet deployment (the relayer runs only locally so far), the Stylus tree. See the phases in PLAN.md.
 
 **Trust model:** the pool owner can list tokens, set deposit caps, pause new deposits and set a swap fee of at most 1% (0 today). The owner can't move anyone's tokens, block withdrawals or touch notes. The code is unaudited, so caps stay low.
 
@@ -62,10 +68,14 @@ In a second terminal:
 ```
 
 ```bash
+cd relayer && npm install && npm run dev:fork
+```
+
+```bash
 cd web && npm install && npm run dev
 ```
 
-Open http://localhost:5180 and choose **Use local test account** (anvil's public dev key, funded with 2,000 fork USDG by `dev-fork.sh`), or connect a browser wallet pointed at `http://127.0.0.1:8545`, chain 31337.
+Open http://localhost:5180 and choose **Use local test account** (anvil's public dev key, funded with 2,000 fork USDG by `dev-fork.sh`). The relayer uses anvil's account 2. Or connect a browser wallet pointed at `http://127.0.0.1:8545`, chain 31337.
 
 ## Build and test
 
