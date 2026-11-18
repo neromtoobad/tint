@@ -18,7 +18,7 @@ const browser = await puppeteer.launch({
   args: ['--allow-file-access-from-files'],
 });
 const page = await browser.newPage();
-await page.setViewport({ width: 3400, height: 2000, deviceScaleFactor: scale });
+await page.setViewport({ width: 3400, height: 9000, deviceScaleFactor: scale });
 await page.goto('file://' + file, { waitUntil: 'networkidle0' });
 await page.evaluate(() => document.fonts.ready);
 const els = await page.$$('[data-out]');

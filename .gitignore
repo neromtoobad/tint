@@ -7,3 +7,4 @@ circuits/**/target/
 web/.next/
 .DS_Store
 brand/refs/
+brand/tools/node_modules/
