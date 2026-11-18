@@ -1,0 +1,111 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=DM+Mono:wght@400;500&display=block">
+<style>
+:root{--paper:#F3EFE9;--card:#FFFFFF;--ink:#121318;--muted:#6F6E69;--line:#E2DED4;--cobalt:#1B2A6B;--deep:#0B1230;--sky:#9DB4FF}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#dcd9d1;font-family:'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;padding:40px;display:flex;flex-direction:column;gap:40px;align-items:flex-start}
+.mono{font-family:'DM Mono',monospace}
+.frame{position:relative;overflow:hidden;background:var(--paper)}
+.brand{display:flex;align-items:center;gap:14px;font-weight:700;letter-spacing:-.045em}
+.poster{width:1600px;height:900px}
+.poster .brand{position:absolute;top:64px;left:96px;font-size:42px}
+.poster .left{position:absolute;left:96px;top:222px;width:760px}
+.eyebrow{font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:30px}
+h1{font-size:96px;line-height:.96;font-weight:700;letter-spacing:-.05em}
+h1 span{color:var(--cobalt)}
+.sub{margin-top:34px;font-size:28px;line-height:1.38;color:#3e3d39;width:640px;font-weight:400}
+.foot{position:absolute;left:96px;right:96px;bottom:56px;display:flex;justify-content:space-between;font-size:18px;color:var(--muted)}
+.foot b{color:var(--ink);font-weight:500}
+.hero{position:absolute;right:40px;top:40px;width:820px;height:820px;background:url(../art/m0.png) center/cover}
+.bubble{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 20px;font-size:22px;box-shadow:0 20px 40px -24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center}
+.bubble small{display:block;font-family:'DM Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--cobalt);flex:none}
+.banner{width:1500px;height:500px}
+.banner .hero{width:620px;height:620px;right:-60px;top:-70px}
+.banner h2{position:absolute;left:470px;top:130px;font-size:80px;line-height:.96;font-weight:700;letter-spacing:-.05em}
+.banner h2 span{color:var(--cobalt)}
+.banner .bl{position:absolute;left:474px;top:330px;font-size:15px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.avatar{width:400px;height:400px;background:url(../art/m0.png) 50% 34%/170%}
+.board{width:3000px;padding:80px;background:#EBE8E0;display:grid;grid-template-columns:1600px 1fr;gap:64px}
+.board h3{font-size:22px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;margin-bottom:22px}
+.board .title{grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:36px}
+.board .title .n{font-size:84px;font-weight:700;letter-spacing:-.05em}
+.board .title .d{font-size:26px;color:var(--muted);max-width:900px;text-align:right;line-height:1.4}
+.sw{display:flex;gap:18px}.sw div{width:150px;height:150px;border-radius:20px;display:flex;align-items:flex-end;padding:14px;font-family:'DM Mono',monospace;font-size:15px}
+.marks{display:flex;gap:28px;align-items:center}
+.tile{width:240px;height:240px;border-radius:36px;display:grid;place-items:center}
+.xav{width:240px;height:240px;border-radius:50%;overflow:hidden}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1230"/><stop offset=".55" stop-color="#1B2A6B"/><stop offset="1" stop-color="#9DB4FF" stop-opacity=".35"/></linearGradient>
+  <linearGradient id="lgw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#C9D5FF"/><stop offset="1" stop-color="#9DB4FF" stop-opacity=".35"/></linearGradient>
+  <!-- shades mark: two lenses and a bridge -->
+  <symbol id="shades" viewBox="0 0 100 100">
+    <path d="M10 38 Q10 33 15 33 L43 33 Q47 33 46.5 37 L44 52 Q42 64 30 64 L22 64 Q11 64 10 52 Z" fill="url(#lg)"/>
+    <path d="M90 38 Q90 33 85 33 L57 33 Q53 33 53.5 37 L56 52 Q58 64 70 64 L78 64 Q89 64 90 52 Z" fill="url(#lg)"/>
+    <path d="M44 36 Q50 31 56 36" fill="none" stroke="#0B1230" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="shadesW" viewBox="0 0 100 100">
+    <path d="M10 38 Q10 33 15 33 L43 33 Q47 33 46.5 37 L44 52 Q42 64 30 64 L22 64 Q11 64 10 52 Z" fill="url(#lgw)"/>
+    <path d="M90 38 Q90 33 85 33 L57 33 Q53 33 53.5 37 L56 52 Q58 64 70 64 L78 64 Q89 64 90 52 Z" fill="url(#lgw)"/>
+    <path d="M44 36 Q50 31 56 36" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="frame poster" data-out="c-poster">
+  <div class="hero"></div>
+  <div class="brand"><svg width="52" height="52"><use href="#shades"/></svg>tint</div>
+  <div class="left">
+    <div class="eyebrow mono">Private stock wallet · Robinhood Chain</div>
+    <h1>You can see out.<br><span>They can’t see in.</span></h1>
+    <p class="sub">Buy NVDA, SPY and TSLA, or let your agent invest for you. Nobody watching the chain can see what you hold.</p>
+  </div>
+  <div class="bubble" style="left:1010px;top:690px"><span class="dot"></span><div><small>YOUR AGENT · 09:41</small>Bought 2 SPY. Nobody saw.</div></div>
+  <div class="foot mono"><span><b>tint.trade</b> · @tinttrade</span><span>Building in public · testnet soon</span></div>
+</div>
+
+<div class="frame banner" data-out="c-banner">
+  <div class="hero"></div>
+  <h2>You can see out.<br><span>They can’t see in.</span></h2>
+  <div class="bl mono">Private stock wallet + AI agents · Robinhood Chain</div>
+</div>
+
+<div class="frame avatar" data-out="c-avatar"></div>
+
+<div class="board" data-out="c-board">
+  <div class="title"><div class="n">C · Shades</div><div class="d">Your agent wears shades. A 3D mascot for the AI agents, and a mark made of two gradient lenses. Light, friendly, made to be shared.</div></div>
+  <div>
+    <h3>Poster · 1600×900</h3>
+    <div id="pslot" style="width:1600px;height:900px;border-radius:24px;overflow:hidden;border:1px solid var(--line)"></div>
+    <h3 style="margin-top:56px">X banner · 1500×500</h3>
+    <div id="bslot" style="width:1500px;height:500px;border-radius:24px;overflow:hidden;border:1px solid var(--line)"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:56px">
+    <div><h3>Mark + avatar</h3>
+      <div class="marks">
+        <div class="tile" style="background:#F3EFE9;border:1px solid var(--line)"><svg width="180" height="180"><use href="#shades"/></svg></div>
+        <div class="tile" style="background:#0B1230"><svg width="180" height="180"><use href="#shadesW"/></svg></div>
+        <div class="xav" id="aslot"></div>
+      </div></div>
+    <div><h3>Wordmark</h3>
+      <div class="brand" style="font-size:156px;gap:24px"><svg width="170" height="170"><use href="#shades"/></svg>tint</div></div>
+    <div><h3>Colour</h3>
+      <div class="sw">
+        <div style="background:#F3EFE9;border:1px solid var(--line)">#F3EFE9</div>
+        <div style="background:#FFFFFF;border:1px solid var(--line)">#FFFFFF</div>
+        <div style="background:#9DB4FF">#9DB4FF</div>
+        <div style="background:#1B2A6B;color:#fff">#1B2A6B</div>
+        <div style="background:#0B1230;color:#fff">#0B1230</div>
+      </div></div>
+    <div><h3>Type</h3>
+      <div style="font-size:64px;font-weight:700;letter-spacing:-.05em">Bricolage Grotesque</div>
+      <div class="mono" style="font-size:30px;color:var(--muted);margin-top:10px">DM Mono · 12.40 NVDA</div></div>
+  </div>
+</div>
+<script>
+const clone=(sel,slot)=>{const c=document.querySelector(sel).cloneNode(true);c.removeAttribute('data-out');document.getElementById(slot).appendChild(c);return c};
+clone('.poster','pslot');clone('.banner','bslot');
+const av=clone('.avatar','aslot');av.style.transform='scale(.6)';av.style.transformOrigin='top left';
+</script>
+</body></html>

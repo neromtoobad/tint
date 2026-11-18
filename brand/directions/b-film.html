@@ -1,0 +1,133 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&family=IBM+Plex+Mono:wght@400;500&display=block">
+<style>
+:root{--paper:#F3F1EB;--card:#FBFAF7;--ink:#0F0F11;--muted:#6E6C66;--line:#DEDAD0;--f70:rgba(15,15,17,.16);--f35:rgba(15,15,17,.52);--f15:rgba(15,15,17,.80);--f5:rgba(15,15,17,.965)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#d9d6ce;font-family:'Schibsted Grotesk',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;padding:40px;display:flex;flex-direction:column;gap:40px;align-items:flex-start}
+.mono{font-family:'IBM Plex Mono',monospace}
+.frame{position:relative;overflow:hidden;background:var(--paper)}
+.brand{display:flex;align-items:center;gap:14px;font-weight:800;letter-spacing:-.05em}
+/* poster */
+.poster{width:1600px;height:900px}
+.poster .brand{position:absolute;top:64px;left:96px;font-size:42px}
+.poster .left{position:absolute;left:96px;top:214px;width:760px}
+.eyebrow{font-size:18px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:30px}
+h1{font-size:90px;line-height:.94;font-weight:800;letter-spacing:-.055em}
+h1 span{color:var(--muted);opacity:.55}
+.sub{margin-top:36px;font-size:27px;line-height:1.4;color:#3d3c39;width:640px}
+.foot{position:absolute;left:96px;right:96px;bottom:56px;display:flex;justify-content:space-between;font-size:18px;color:var(--muted);border-top:1px solid var(--line);padding-top:22px}
+.foot b{color:var(--ink);font-weight:500}
+/* film swatch panel */
+.panel{position:absolute;right:96px;top:150px;width:620px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:30px 30px 26px;box-shadow:0 30px 60px -30px rgba(0,0,0,.18)}
+.panel .cap{display:flex;justify-content:space-between;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.strip{position:relative;height:104px;border-radius:16px;overflow:hidden;margin-bottom:12px;background:#fff;border:1px solid var(--line)}
+.strip .row{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:30px;font-weight:700;letter-spacing:-.02em}
+.strip .row .n{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:25px}
+.strip .film{position:absolute;inset:0;backdrop-filter:blur(var(--b))}
+.strip .vlt{position:absolute;right:12px;top:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.1em;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:var(--ink)}
+.panel .note{font-size:17px;color:var(--muted);margin-top:16px;line-height:1.45}
+/* banner */
+.banner{width:1500px;height:500px}
+.banner h2{position:absolute;left:470px;top:120px;font-size:84px;line-height:.94;font-weight:800;letter-spacing:-.055em}
+.banner h2 span{color:var(--muted);opacity:.55}
+.banner .bl{position:absolute;left:474px;top:330px;font-size:17px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.bands{position:absolute;right:0;top:0;bottom:0;display:flex}
+.bands div{width:70px;height:100%}
+/* avatar */
+.avatar{width:400px;height:400px;display:grid;place-items:center;background:var(--ink)}
+/* board */
+.board{width:3000px;padding:80px;background:#EAE7DF;display:grid;grid-template-columns:1600px 1fr;gap:64px}
+.board h3{font-size:22px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:400;margin-bottom:22px}
+.board .title{grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:36px}
+.board .title .n{font-size:84px;font-weight:800;letter-spacing:-.05em}
+.board .title .d{font-size:26px;color:var(--muted);max-width:900px;text-align:right;line-height:1.4}
+.sw{display:flex;gap:18px}.sw div{width:150px;height:150px;border-radius:20px;display:flex;align-items:flex-end;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:15px}
+.marks{display:flex;gap:28px;align-items:center}
+.tile{width:240px;height:240px;border-radius:36px;display:grid;place-items:center}
+.xav{width:240px;height:240px;border-radius:50%;overflow:hidden}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <!-- film swatch mark: four strips, each darker -->
+  <symbol id="filmK" viewBox="0 0 100 100">
+    <clipPath id="sq"><rect x="6" y="6" width="88" height="88" rx="24"/></clipPath>
+    <g clip-path="url(#sq)">
+      <rect x="6" y="6" width="22" height="88" fill="#0F0F11" fill-opacity=".14"/>
+      <rect x="28" y="6" width="22" height="88" fill="#0F0F11" fill-opacity=".40"/>
+      <rect x="50" y="6" width="22" height="88" fill="#0F0F11" fill-opacity=".70"/>
+      <rect x="72" y="6" width="22" height="88" fill="#0F0F11"/>
+    </g>
+  </symbol>
+  <symbol id="filmW" viewBox="0 0 100 100">
+    <clipPath id="sq2"><rect x="6" y="6" width="88" height="88" rx="24"/></clipPath>
+    <g clip-path="url(#sq2)">
+      <rect x="6" y="6" width="22" height="88" fill="#F3F1EB"/>
+      <rect x="28" y="6" width="22" height="88" fill="#F3F1EB" fill-opacity=".70"/>
+      <rect x="50" y="6" width="22" height="88" fill="#F3F1EB" fill-opacity=".40"/>
+      <rect x="72" y="6" width="22" height="88" fill="#F3F1EB" fill-opacity=".14"/>
+    </g>
+  </symbol>
+</defs></svg>
+
+<div class="frame poster" data-out="b-poster">
+  <div class="brand"><svg width="46" height="46"><use href="#filmK"/></svg>tint</div>
+  <div class="left">
+    <div class="eyebrow mono">Private stock wallet · Robinhood Chain</div>
+    <h1>You can see out.<br><span>They can’t see in.</span></h1>
+    <p class="sub">Buy NVDA, SPY and TSLA, or let an AI agent invest for you. Nobody watching the chain can see what you hold.</p>
+  </div>
+  <div class="panel">
+    <div class="cap mono"><span>One balance, four tints</span><span>VLT</span></div>
+    <div class="strip"><div class="row"><span>NVDA</span><span class="n">12.40 · $2,341.18</span></div><div class="film" style="--b:0px;background:var(--f70)"></div><span class="vlt">70%</span></div>
+    <div class="strip"><div class="row"><span>NVDA</span><span class="n">12.40 · $2,341.18</span></div><div class="film" style="--b:2px;background:var(--f35)"></div><span class="vlt">35%</span></div>
+    <div class="strip"><div class="row"><span>NVDA</span><span class="n">12.40 · $2,341.18</span></div><div class="film" style="--b:5px;background:var(--f15)"></div><span class="vlt">15%</span></div>
+    <div class="strip"><div class="row"><span>NVDA</span><span class="n">12.40 · $2,341.18</span></div><div class="film" style="--b:9px;background:var(--f5)"></div><span class="vlt">5%</span></div>
+    <p class="note">Window film is rated by how much light gets through. On Tint, the chain gets the last one.</p>
+  </div>
+  <div class="foot mono"><span><b>tint.trade</b> · @tinttrade</span><span>Building in public · testnet soon</span></div>
+</div>
+
+<div class="frame banner" data-out="b-banner">
+  <h2>You can see out.<br><span>They can’t see in.</span></h2>
+  <div class="bl mono">Private stock wallet + AI agents · Robinhood Chain</div>
+  <div class="bands"><div style="background:rgba(15,15,17,.14)"></div><div style="background:rgba(15,15,17,.40)"></div><div style="background:rgba(15,15,17,.70)"></div><div style="background:#0F0F11"></div></div>
+</div>
+
+<div class="frame avatar" data-out="b-avatar"><svg width="230" height="230"><use href="#filmW"/></svg></div>
+
+<div class="board" data-out="b-board">
+  <div class="title"><div class="n">B · Film</div><div class="d">Window film is sold by how much light it lets through (VLT). Four strips, each darker. Light, editorial, black ink on paper, no colour at all.</div></div>
+  <div>
+    <h3>Poster · 1600×900</h3>
+    <div id="pslot" style="width:1600px;height:900px;border-radius:24px;overflow:hidden;border:1px solid var(--line)"></div>
+    <h3 style="margin-top:56px">X banner · 1500×500</h3>
+    <div id="bslot" style="width:1500px;height:500px;border-radius:24px;overflow:hidden;border:1px solid var(--line)"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:56px">
+    <div><h3>Mark</h3>
+      <div class="marks">
+        <div class="tile" style="background:#F3F1EB;border:1px solid var(--line)"><svg width="160" height="160"><use href="#filmK"/></svg></div>
+        <div class="tile" style="background:#0F0F11"><svg width="160" height="160"><use href="#filmW"/></svg></div>
+        <div class="xav" id="aslot"></div>
+      </div></div>
+    <div><h3>Wordmark</h3>
+      <div class="brand" style="font-size:156px;gap:28px"><svg width="150" height="150"><use href="#filmK"/></svg>tint</div></div>
+    <div><h3>Colour</h3>
+      <div class="sw">
+        <div style="background:#F3F1EB;border:1px solid var(--line)">#F3F1EB</div>
+        <div style="background:#FBFAF7;border:1px solid var(--line)">#FBFAF7</div>
+        <div style="background:rgba(15,15,17,.40)">40%</div>
+        <div style="background:rgba(15,15,17,.70);color:#fff">70%</div>
+        <div style="background:#0F0F11;color:#fff">#0F0F11</div>
+      </div></div>
+    <div><h3>Type</h3>
+      <div style="font-size:64px;font-weight:800;letter-spacing:-.05em">Schibsted Grotesk</div>
+      <div class="mono" style="font-size:30px;color:var(--muted);margin-top:10px">IBM Plex Mono · 12.40 NVDA</div></div>
+  </div>
+</div>
+<script>
+const clone=(sel,slot)=>{const c=document.querySelector(sel).cloneNode(true);c.removeAttribute('data-out');document.getElementById(slot).appendChild(c);return c};
+clone('.poster','pslot');clone('.banner','bslot');
+const av=clone('.avatar','aslot');av.style.transform='scale(.6)';av.style.transformOrigin='top left';
+</script>
+</body></html>

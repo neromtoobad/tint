@@ -1,0 +1,149 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=JetBrains+Mono:wght@400;500&display=block">
+<style>
+:root{--bg:#08090B;--bg2:#101217;--ink:#F2F4F7;--muted:#8B919B;--dim:#4A4F58;--line:rgba(255,255,255,.09);--edge:#A9C7FF;--glow:#2F5BFF}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1b1c1f;font-family:'Funnel Display',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;padding:40px;display:flex;flex-direction:column;gap:40px;align-items:flex-start}
+.mono{font-family:'JetBrains Mono',monospace}
+/* ---------- lens mark ---------- */
+.lens{position:relative;border-radius:50%;overflow:hidden}
+.lens svg{display:block;width:100%;height:100%}
+/* ---------- frames ---------- */
+.frame{position:relative;overflow:hidden;background:var(--bg)}
+.glow{position:absolute;border-radius:50%;filter:blur(90px);background:radial-gradient(circle,var(--glow) 0%,transparent 70%);opacity:.32}
+.brand{display:flex;align-items:center;gap:14px;font-weight:600;letter-spacing:-.045em}
+/* poster */
+.poster{width:1600px;height:900px}
+.poster .brand{position:absolute;top:64px;left:96px;font-size:40px}
+.poster .left{position:absolute;left:96px;top:222px;width:780px}
+.eyebrow{font-size:18px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:34px;display:flex;gap:12px;align-items:center}
+.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--edge);box-shadow:0 0 12px var(--edge)}
+h1{font-size:96px;line-height:.98;font-weight:500;letter-spacing:-.045em}
+h1 span{color:var(--dim)}
+.sub{margin-top:36px;font-size:27px;line-height:1.4;color:var(--muted);width:640px;font-weight:350}
+.foot{position:absolute;left:96px;right:96px;bottom:56px;display:flex;justify-content:space-between;font-size:19px;color:var(--muted)}
+.foot b{color:var(--ink);font-weight:500}
+/* the window: holdings card behind tinted lens */
+.window{position:absolute;right:110px;top:150px;width:600px;height:600px;border-radius:50%;overflow:hidden;background:var(--bg2);box-shadow:0 0 0 2px rgba(169,199,255,.35),0 0 80px rgba(47,91,255,.25),inset 0 0 60px rgba(0,0,0,.6)}
+.card{position:absolute;left:70px;right:70px;top:150px;display:flex;flex-direction:column;gap:0}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:22px 6px;border-bottom:1px solid var(--line);font-size:30px;letter-spacing:-.02em}
+.row .t{font-weight:600}.row .n{font-family:'JetBrains Mono',monospace;font-size:26px;color:var(--ink)}
+.cap{font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;padding:0 6px 10px}
+.tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,9,11,.80) 0%,rgba(8,9,11,.72) 46%,rgba(8,9,11,.25) 72%,rgba(8,9,11,0) 100%);backdrop-filter:blur(11px);-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 55%,transparent 82%)}
+.sheen{position:absolute;inset:0;border-radius:50%;background:linear-gradient(115deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 28%,rgba(255,255,255,0) 70%,rgba(169,199,255,.10) 100%)}
+.wlabel{position:absolute;right:110px;top:772px;width:600px;text-align:center;font-size:16px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+/* banner */
+.banner{width:1500px;height:500px}
+.banner .glow{width:700px;height:500px;right:-80px;top:40px}
+.banner h2{position:absolute;left:470px;top:150px;font-size:76px;line-height:1;font-weight:500;letter-spacing:-.045em}
+.banner h2 span{color:var(--dim)}
+.banner .bl{position:absolute;left:472px;top:340px;font-size:18px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.banner .big{position:absolute;right:-120px;top:-120px;width:560px;height:560px;opacity:.95}
+/* avatar */
+.avatar{width:400px;height:400px;display:grid;place-items:center}
+.avatar .glow{width:340px;height:340px;left:30px;top:30px;opacity:.28}
+/* board */
+.board{width:3000px;padding:80px;background:#0d0e11;display:grid;grid-template-columns:1600px 1fr;gap:64px}
+.board h3{font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:400;margin-bottom:22px}
+.board .title{grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:36px}
+.board .title .n{font-size:84px;font-weight:500;letter-spacing:-.045em}
+.board .title .d{font-size:26px;color:var(--muted);max-width:900px;text-align:right;line-height:1.4}
+.scaled{transform-origin:top left}
+.sw{display:flex;gap:18px}.sw div{width:150px;height:150px;border-radius:20px;display:flex;align-items:flex-end;padding:14px;font-family:'JetBrains Mono',monospace;font-size:15px}
+.marks{display:flex;gap:28px;align-items:center}
+.tile{width:240px;height:240px;border-radius:36px;display:grid;place-items:center}
+.xav{width:240px;height:240px;border-radius:50%;overflow:hidden}
+</style></head><body>
+
+<!-- reusable lens svg -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="tintA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2F4F7"/><stop offset=".46" stop-color="#F2F4F7"/>
+      <stop offset=".64" stop-color="#F2F4F7" stop-opacity=".18"/><stop offset="1" stop-color="#F2F4F7" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="tintB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B0C0F"/><stop offset=".46" stop-color="#0B0C0F"/>
+      <stop offset=".64" stop-color="#0B0C0F" stop-opacity=".14"/><stop offset="1" stop-color="#0B0C0F" stop-opacity="0"/>
+    </linearGradient>
+    <symbol id="lensW" viewBox="0 0 100 100"><circle cx="50" cy="50" r="41" fill="url(#tintA)"/><circle cx="50" cy="50" r="41" fill="none" stroke="#F2F4F7" stroke-width="5"/></symbol>
+    <symbol id="lensK" viewBox="0 0 100 100"><circle cx="50" cy="50" r="41" fill="url(#tintB)"/><circle cx="50" cy="50" r="41" fill="none" stroke="#0B0C0F" stroke-width="5"/></symbol>
+  </defs>
+</svg>
+
+<!-- POSTER -->
+<div class="frame poster" data-out="a-poster">
+  <div class="glow" style="width:820px;height:820px;right:0;top:40px"></div>
+  <div class="brand"><svg width="44" height="44"><use href="#lensW"/></svg>tint</div>
+  <div class="left">
+    <div class="eyebrow mono"><i></i>Private stock wallet · Robinhood Chain</div>
+    <h1>You can see out.<br><span>They can’t see in.</span></h1>
+    <p class="sub">Buy NVDA, SPY and TSLA, or let an AI agent invest for you. Nobody watching the chain can see what you hold.</p>
+  </div>
+  <div class="window">
+    <div class="card">
+      <div class="cap">Your balance</div>
+      <div class="row"><span class="t">NVDA</span><span class="n">12.40 · $2,341.18</span></div>
+      <div class="row"><span class="t">SPY</span><span class="n">3.05 · $1,872.60</span></div>
+      <div class="row"><span class="t">TSLA</span><span class="n">4.10 · $1,402.33</span></div>
+      <div class="row"><span class="t">USDG</span><span class="n">$640.00</span></div>
+    </div>
+    <div class="tint"></div><div class="sheen"></div>
+  </div>
+  <div class="wlabel mono">What the chain sees ↑ · What you see ↓</div>
+  <div class="foot mono"><span><b>tint.trade</b> · @tinttrade</span><span>Building in public · testnet soon</span></div>
+</div>
+
+<!-- BANNER -->
+<div class="frame banner" data-out="a-banner">
+  <div class="glow"></div>
+  <svg class="big" viewBox="0 0 100 100"><use href="#lensW"/></svg>
+  <h2>You can see out.<br><span>They can’t see in.</span></h2>
+  <div class="bl mono">Private stock wallet + AI agents · Robinhood Chain</div>
+</div>
+
+<!-- AVATAR -->
+<div class="frame avatar" data-out="a-avatar">
+  <div class="glow"></div>
+  <svg width="216" height="216" style="position:relative"><use href="#lensW"/></svg>
+</div>
+
+<!-- BOARD -->
+<div class="board" data-out="a-board">
+  <div class="title"><div class="n">A · Lens</div><div class="d">A gradient lens: dark on top, clear underneath. Like gradient sunglasses — you can see out, they can’t see in. Dark, cinematic, one cool edge-light.</div></div>
+  <div>
+    <h3>Poster · 1600×900</h3>
+    <div id="pslot" style="width:1600px;height:900px;border-radius:24px;overflow:hidden"></div>
+    <h3 style="margin-top:56px">X banner · 1500×500</h3>
+    <div id="bslot" style="width:1500px;height:500px;border-radius:24px;overflow:hidden"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:56px">
+    <div><h3>Mark</h3>
+      <div class="marks">
+        <div class="tile" style="background:#08090B"><svg width="150" height="150"><use href="#lensW"/></svg></div>
+        <div class="tile" style="background:#F2F4F7"><svg width="150" height="150"><use href="#lensK"/></svg></div>
+        <div class="xav" id="aslot"></div>
+      </div></div>
+    <div><h3>Wordmark</h3>
+      <div class="brand" style="font-size:150px;gap:30px"><svg width="150" height="150"><use href="#lensW"/></svg>tint</div></div>
+    <div><h3>Colour</h3>
+      <div class="sw">
+        <div style="background:#08090B;border:1px solid #222">#08090B</div>
+        <div style="background:#101217;border:1px solid #222">#101217</div>
+        <div style="background:#F2F4F7;color:#08090B">#F2F4F7</div>
+        <div style="background:#A9C7FF;color:#08090B">#A9C7FF</div>
+        <div style="background:#2F5BFF">#2F5BFF</div>
+      </div></div>
+    <div><h3>Type</h3>
+      <div style="font-size:64px;font-weight:500;letter-spacing:-.04em">Funnel Display</div>
+      <div class="mono" style="font-size:30px;color:var(--muted);margin-top:10px">JetBrains Mono · 12.40 NVDA</div></div>
+  </div>
+</div>
+
+<script>
+// put live copies of the frames inside the board
+const clone=(sel,slot)=>{const c=document.querySelector(sel).cloneNode(true);c.removeAttribute('data-out');document.getElementById(slot).appendChild(c);return c};
+clone('.poster','pslot');clone('.banner','bslot');
+const av=clone('.avatar','aslot');av.style.transform='scale(.6)';av.style.transformOrigin='top left';
+</script>
+</body></html>

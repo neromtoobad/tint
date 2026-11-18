@@ -1,0 +1,1 @@
+- Nov 18: direction C mascot, gpt_image_2_6 ×4 = 1 credit (balance 1399.3 → ~1398.3)
