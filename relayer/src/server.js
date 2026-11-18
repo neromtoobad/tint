@@ -6,7 +6,8 @@
 //
 //   GET  /info            relayer address, chain, pool, fee in USD
 //   GET  /fee?asset=0x…   fee for a transaction paid in that asset (token units)
-//   POST /relay           { functionName: 'transact' | 'swap', p, ext }  ->  { hash }
+//   POST /relay           { functionName, p, ext }  ->  { hash }
+//                         functionName: transact | swap | agentTransact | agentSwap
 //
 // Deposits are not relayed: they pull tokens from the sender's own wallet.
 import { createServer } from 'node:http';
@@ -78,21 +79,21 @@ const addr = (v) => getAddress(v);
 
 /** JSON from the browser -> the exact struct shapes the pool ABI expects. */
 function parseCall({ functionName, p, ext }) {
-  if (functionName === 'transact') {
+  if (functionName === 'transact' || functionName === 'agentTransact') {
     return {
       functionName,
       p: { proof: p.proof, root: big(p.root), publicAsset: big(p.publicAsset), publicIn: big(p.publicIn), publicOut: big(p.publicOut), nullifiers: p.nullifiers.map(big), outCommitments: p.outCommitments.map(big) },
       ext: { recipient: addr(ext.recipient), relayer: addr(ext.relayer), fee: big(ext.fee), encryptedOutput0: ext.encryptedOutput0, encryptedOutput1: ext.encryptedOutput1 },
     };
   }
-  if (functionName === 'swap') {
+  if (functionName === 'swap' || functionName === 'agentSwap') {
     return {
       functionName,
       p: { proof: p.proof, root: big(p.root), nullifiers: p.nullifiers.map(big), assetIn: big(p.assetIn), amountIn: big(p.amountIn), assetOut: big(p.assetOut), minOut: big(p.minOut), changeCommitment: big(p.changeCommitment), outInner: big(p.outInner) },
       ext: { relayer: addr(ext.relayer), fee: big(ext.fee), poolFee: Number(ext.poolFee), deadline: big(ext.deadline), encryptedChange: ext.encryptedChange, encryptedOut: ext.encryptedOut },
     };
   }
-  throw httpError(400, 'functionName must be transact or swap');
+  throw httpError(400, 'functionName must be transact, swap, agentTransact or agentSwap');
 }
 
 const toAddr = (x) => getAddress('0x' + x.toString(16).padStart(40, '0'));
@@ -101,7 +102,7 @@ async function check(call) {
   const { functionName, p, ext } = call;
   if (ext.relayer !== account.address) throw httpError(400, `This proof pays relayer ${ext.relayer}, not this one (${account.address}).`);
   let feeAsset;
-  if (functionName === 'transact') {
+  if (functionName === 'transact' || functionName === 'agentTransact') {
     if (p.publicIn > 0n) throw httpError(400, 'Deposits are sent from your own wallet, not through the relayer.');
     if (p.publicOut === 0n) throw httpError(400, 'This transaction pays no fee.');
     feeAsset = toAddr(p.publicAsset);
