@@ -32,11 +32,13 @@ export function hashExtData(ext) {
  * @param publicIn / publicOut tokens entering / leaving the pool
  * @param ext      { recipient, relayer, fee, encryptedOutput0, encryptedOutput1 }
  */
-export function buildTransact({ tree, spendKey, asset, inputs = [], outputs = [], publicIn = 0n, publicOut = 0n, ext }) {
+export function buildTransact({ tree, spendKey, asset, inputs = [], outputs = [], publicIn = 0n, publicOut = 0n, ext, owner, nk }) {
   if (inputs.length > 2 || outputs.length > 2) throw new Error('at most 2 inputs and 2 outputs');
   asset = BigInt(asset);
   spendKey = BigInt(spendKey);
-  const self = ownerOf(spendKey);
+  // owner / nk default to the spend key's; agent accounts pass their own (see agent.js)
+  const self = owner === undefined ? ownerOf(spendKey) : BigInt(owner);
+  nk = nk === undefined ? nullifierKeyOf(spendKey) : BigInt(nk);
 
   const ins = [...inputs];
   while (ins.length < 2) ins.push({ amount: 0n, blinding: randomField(), index: 0 }); // dummy
@@ -46,7 +48,7 @@ export function buildTransact({ tree, spendKey, asset, inputs = [], outputs = []
   const root = tree.root();
   const inNotes = ins.map((n) => makeNote({ asset, amount: n.amount, owner: self, blinding: n.blinding }));
   const inPaths = ins.map((n) => (BigInt(n.amount) === 0n ? emptyPath() : tree.path(Number(n.index))));
-  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nullifierKeyOf(spendKey)));
+  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nk));
   const outNotes = outs.map((o) =>
     makeNote({ asset, amount: o.amount, owner: o.owner ?? self, blinding: o.blinding ?? randomField() }),
   );

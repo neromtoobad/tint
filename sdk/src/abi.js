@@ -53,9 +53,17 @@ const SWAP_EXT = {
 
 export const tintPoolAbi = [
   { type: 'function', name: 'transact', stateMutability: 'nonpayable', inputs: [PROOF, EXT], outputs: [] },
+  { type: 'function', name: 'agentTransact', stateMutability: 'nonpayable', inputs: [PROOF, EXT], outputs: [] },
   {
     type: 'function',
     name: 'swap',
+    stateMutability: 'nonpayable',
+    inputs: [SWAP_PROOF, SWAP_EXT],
+    outputs: [{ name: 'amountOut', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'agentSwap',
     stateMutability: 'nonpayable',
     inputs: [SWAP_PROOF, SWAP_EXT],
     outputs: [{ name: 'amountOut', type: 'uint256' }],

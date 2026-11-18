@@ -2,6 +2,7 @@
 // (nothing is stored on a server), and builds each action ready to prove.
 import { bytesToHex as viemBytesToHex, getAbiItem, hexToBytes } from 'viem';
 import { tintPoolAbi } from './abi.js';
+import { buildAgentSwap, buildAgentTransact, decodeAgentMemo } from './agent.js';
 import { decryptNote, encryptNote, NOTE, SWAP_OUT } from './encrypt.js';
 import { randomField } from './hash.js';
 import { decodeAddress } from './keys.js';
@@ -21,7 +22,9 @@ export class TintWallet {
    * @param client   viem PublicClient for the chain
    * @param pool     TintPool address
    * @param fromBlock block the pool was deployed in
-   * @param keys     from keysFromSignature / keysFromSeed, or importViewingKey (read-only)
+   * @param keys     from keysFromSignature / keysFromSeed, importViewingKey (read-only),
+   *                 or agentAccountKeys (an agent account: trades with agentSwap,
+   *                 and moves money out only if the user's spend key is there)
    */
   constructor({ client, pool, fromBlock = 0n, keys, chunk = 50_000n }) {
     this.client = client;
@@ -37,6 +40,7 @@ export class TintWallet {
     this.publicByTx = new Map(); // txHash -> { asset, publicIn, publicOut }
     this.pendingBought = []; // swap notes waiting for their Swapped event
     this.txOrder = [];
+    this.agentMemos = new Map(); // agent index -> { index, name, rules, plan, txHash, block }
   }
 
   /** Reads new pool events up to the latest block. */
@@ -99,6 +103,13 @@ export class TintWallet {
     }
     // Ignore anything that doesn't open to the on-chain commitment.
     if (commitmentOf(note.asset, note.amount, inner) !== commitment) return;
+    // An agent memo counts only on a note from our own transaction (we spent in it),
+    // so nobody else can plant one by sending us a note.
+    if (note.memo) {
+      const memo = decodeAgentMemo(note.memo);
+      const ours = this.notes.some((n) => this.nullifierTx.get(n.nullifier) === txHash);
+      if (memo && ours) this.agentMemos.set(memo.index, { ...memo, txHash, block });
+    }
     this._addNote({ asset: note.asset, amount: note.amount, blinding: note.blinding, index, commitment, txHash, block });
   }
 
@@ -127,6 +138,11 @@ export class TintWallet {
       out[a] = (out[a] ?? 0n) + n.amount;
     }
     return out;
+  }
+
+  /** Agents this wallet created (from the memos on its own notes), by index. */
+  agents() {
+    return [...this.agentMemos.values()].sort((a, b) => a.index - b.index);
   }
 
   unspent(asset) {
@@ -187,9 +203,16 @@ export class TintWallet {
     if (this.keys.viewOnly) throw new Error('This is a viewing key. It can show your balance but not move money.');
   }
 
+  _moveOut() {
+    this._readOnly();
+    if (this.keys.agent && this.keys.agent.spendKey === undefined) {
+      throw new Error('An agent can only trade. Moving money out of its account needs the owner’s keys.');
+    }
+  }
+
   /** Move `amount` of `asset` from your wallet into your private balance. */
   deposit({ asset, amount }) {
-    this._readOnly();
+    this._moveOut();
     const blinding = [randomField(), randomField()];
     const ext = {
       recipient: ZERO,
@@ -206,7 +229,7 @@ export class TintWallet {
    * The recipient gets `amount`; a relayer `fee` (same asset) comes on top.
    */
   withdraw({ asset, amount, recipient, relayer = ZERO, fee = 0n }) {
-    this._readOnly();
+    this._moveOut();
     const ins = this._pick(asset, amount + fee);
     const change = ins.reduce((s, n) => s + n.amount, 0n) - amount - fee;
     const blinding = [randomField(), randomField()];
@@ -226,9 +249,12 @@ export class TintWallet {
     });
   }
 
-  /** Pay another Tint user privately (tint1… address). Nothing leaves the pool. */
-  send({ asset, amount, to, relayer = ZERO, fee = 0n }) {
-    this._readOnly();
+  /**
+   * Pay another Tint user privately (tint1… address). Nothing leaves the pool.
+   * `memo` (bytes) rides encrypted on your own change note; used to remember agents.
+   */
+  send({ asset, amount, to, relayer = ZERO, fee = 0n, memo }) {
+    this._moveOut();
     const { owner, viewPublic } = decodeAddress(to);
     const ins = this._pick(asset, amount + fee);
     const change = ins.reduce((s, n) => s + n.amount, 0n) - amount - fee;
@@ -239,7 +265,7 @@ export class TintWallet {
       relayer,
       fee,
       encryptedOutput0: this._enc(viewPublic, { asset, amount, blinding: blinding[0] }),
-      encryptedOutput1: this._enc(this.keys.viewPublic, { asset, amount: change, blinding: blinding[1] }),
+      encryptedOutput1: this._enc(this.keys.viewPublic, { asset, amount: change, blinding: blinding[1], memo }),
     };
     return this._transact({
       asset,
@@ -255,7 +281,7 @@ export class TintWallet {
 
   /** Combine your two largest notes of `asset` into one. */
   combine({ asset, relayer = ZERO, fee = 0n }) {
-    this._readOnly();
+    this._moveOut();
     const ins = this.unspent(asset).sort((a, b) => (a.amount > b.amount ? -1 : 1)).slice(0, 2);
     const total = ins.reduce((s, n) => s + n.amount, 0n) - fee;
     if (total < 0n) throw new Error('Not enough in your private balance.');
@@ -271,16 +297,20 @@ export class TintWallet {
   }
 
   _transact({ asset, publicIn = 0n, publicOut = 0n, inputs = [], outputs, ext }) {
-    const built = buildTransact({
+    const args = {
       tree: this.tree,
-      spendKey: this.keys.spendKey,
       asset: BigInt(asset),
       publicIn,
       publicOut,
       inputs: inputs.map((n) => ({ amount: n.amount, blinding: n.blinding, index: n.index })),
       outputs,
       ext,
-    });
+    };
+    if (this.keys.agent) {
+      const built = buildAgentTransact({ keys: this.keys, ...args });
+      return { circuit: 'agent_transact', functionName: 'agentTransact', circuitInputs: built.circuitInputs, publicData: built.publicData, ext };
+    }
+    const built = buildTransact({ spendKey: this.keys.spendKey, ...args });
     return { circuit: 'transact', functionName: 'transact', circuitInputs: built.circuitInputs, publicData: built.publicData, ext };
   }
 
@@ -304,9 +334,8 @@ export class TintWallet {
       encryptedChange: this._enc(this.keys.viewPublic, { asset: assetIn, amount: total - amountIn, blinding: changeBlinding }),
       encryptedOut: this._enc(this.keys.viewPublic, { kind: SWAP_OUT, asset: assetOut, blinding: outBlinding }),
     };
-    const built = buildSwap({
+    const args = {
       tree: this.tree,
-      spendKey: this.keys.spendKey,
       assetIn,
       assetOut,
       inputs: ins.map((n) => ({ amount: n.amount, blinding: n.blinding, index: n.index })),
@@ -315,7 +344,13 @@ export class TintWallet {
       ext,
       changeBlinding,
       outBlinding,
-    });
+    };
+    if (this.keys.agent) {
+      // An agent trades inside its account; the proof shows the trade follows the rules.
+      const built = buildAgentSwap({ keys: this.keys, ...args });
+      return { circuit: 'agent_swap', functionName: 'agentSwap', circuitInputs: built.circuitInputs, publicData: built.publicData, ext };
+    }
+    const built = buildSwap({ spendKey: this.keys.spendKey, ...args });
     return { circuit: 'swap', functionName: 'swap', circuitInputs: built.circuitInputs, publicData: built.publicData, ext };
   }
 }

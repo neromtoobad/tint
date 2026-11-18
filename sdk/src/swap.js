@@ -32,14 +32,16 @@ export function hashSwapExt(ext) {
  * Returns the circuit inputs, what the contract receives, and the two new notes
  * (the bought note's amount is only known after the trade: read it from the Swapped event).
  */
-export function buildSwap({ tree, spendKey, assetIn, assetOut, inputs, amountIn, minOut, ext, changeBlinding, outBlinding }) {
+export function buildSwap({ tree, spendKey, assetIn, assetOut, inputs, amountIn, minOut, ext, changeBlinding, outBlinding, owner, nk }) {
   if (!inputs.length || inputs.length > 2) throw new Error('1 or 2 input notes');
-  spendKey = BigInt(spendKey);
+  spendKey = BigInt(spendKey ?? 0n);
   assetIn = BigInt(assetIn);
   assetOut = BigInt(assetOut);
   amountIn = BigInt(amountIn);
   minOut = BigInt(minOut);
-  const self = ownerOf(spendKey);
+  // owner / nk default to the spend key's; agent accounts pass their own (see agent.js)
+  const self = owner === undefined ? ownerOf(spendKey) : BigInt(owner);
+  nk = nk === undefined ? nullifierKeyOf(spendKey) : BigInt(nk);
 
   const ins = [...inputs];
   while (ins.length < 2) ins.push({ amount: 0n, blinding: randomField(), index: 0 });
@@ -48,7 +50,7 @@ export function buildSwap({ tree, spendKey, assetIn, assetOut, inputs, amountIn,
   if (amountIn === 0n || amountIn > total) throw new Error(`can trade 1..${total}, asked ${amountIn}`);
 
   const root = tree.root();
-  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nullifierKeyOf(spendKey)));
+  const nullifiers = inNotes.map((n, i) => nullifierOf(n.commitment, ins[i].index, nk));
   const change = makeNote({ asset: assetIn, amount: total - amountIn, owner: self, blinding: changeBlinding ?? randomField() });
   outBlinding = BigInt(outBlinding ?? randomField());
   const outInner = innerHash(self, outBlinding);

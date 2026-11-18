@@ -7,6 +7,8 @@
 //
 // kind 1: a normal note. kind 2: the note a swap buys; its amount is only known
 // after the trade, so it is 0 here and the wallet reads it from the Swapped event.
+// An optional memo (any bytes) can follow the 69 bytes, inside the same
+// ciphertext: the wallet uses it to remember the agents it created.
 // Every key is used once, so a fixed nonce is safe.
 import { x25519 } from '@noble/curves/ed25519.js';
 import { chacha20poly1305 } from '@noble/ciphers/chacha.js';
@@ -37,15 +39,16 @@ function noteKey(shared, ephPublic) {
 }
 
 /** Encrypts { kind, asset, amount, blinding } to a viewing public key. Returns bytes. */
-export function encryptNote(viewPublic, { kind = NOTE, asset, amount = 0n, blinding }) {
+export function encryptNote(viewPublic, { kind = NOTE, asset, amount = 0n, blinding, memo }) {
   const eph = x25519.utils.randomSecretKey();
   const ephPublic = x25519.getPublicKey(eph);
   const key = noteKey(x25519.getSharedSecret(eph, viewPublic), ephPublic);
-  const pt = new Uint8Array(PLAINTEXT_LEN);
+  const pt = new Uint8Array(PLAINTEXT_LEN + (memo?.length ?? 0));
   pt[0] = kind;
   pt.set(be(asset, 20), 1);
   pt.set(be(amount, 16), 21);
   pt.set(be(blinding, 32), 37);
+  if (memo?.length) pt.set(memo, PLAINTEXT_LEN);
   const ct = chacha20poly1305(key, NONCE).encrypt(pt);
   const out = new Uint8Array(32 + ct.length);
   out.set(ephPublic, 0);
@@ -55,7 +58,7 @@ export function encryptNote(viewPublic, { kind = NOTE, asset, amount = 0n, blind
 
 /** Returns the note if it was encrypted to this viewing secret, else null. */
 export function decryptNote(viewSecret, payload) {
-  if (payload.length !== PAYLOAD_LEN) return null;
+  if (payload.length < PAYLOAD_LEN || payload.length > PAYLOAD_LEN + 4096) return null;
   const ephPublic = payload.slice(0, 32);
   try {
     const key = noteKey(x25519.getSharedSecret(viewSecret, ephPublic), ephPublic);
@@ -65,6 +68,7 @@ export function decryptNote(viewSecret, payload) {
       asset: fromBytes(pt.slice(1, 21)),
       amount: fromBytes(pt.slice(21, 37)),
       blinding: fromBytes(pt.slice(37, 69)),
+      memo: pt.length > PLAINTEXT_LEN ? pt.slice(PLAINTEXT_LEN) : undefined,
     };
   } catch {
     return null;
