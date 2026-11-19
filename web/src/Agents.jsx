@@ -9,7 +9,7 @@ import {
   runRound,
   TintWallet,
 } from '@tint/sdk';
-import { assetOf, cashOf, quote } from './chain.js';
+import { assetOf, cashOf, quote, swapFeeBps } from './chain.js';
 import { relayerFee, runAction } from './engine.js';
 import { amt, friendly, parseAmount, short, toNumber, usd } from './format.js';
 
@@ -151,6 +151,7 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
         rules,
         plan,
         relayer: relayer.relayer,
+        swapFeeBps: await swapFeeBps(net),
         now,
         quote: async (tin, tout, a) => {
           const q = await quote(net, tin, tout, a);

@@ -19,6 +19,16 @@ const SWAP_EXT_ABI = [
   },
 ];
 
+/**
+ * What the pool actually sells out of `amountIn` (TintPool._swap): the relayer
+ * fee comes off first, then the pool's swap fee (swapFeeBps of what is left).
+ * Quote this amount, not amountIn, or minOut ends up too high.
+ */
+export function amountSold(amountIn, relayerFee = 0n, swapFeeBps = 0n) {
+  const afterRelayer = BigInt(amountIn) - BigInt(relayerFee);
+  return afterRelayer - (afterRelayer * BigInt(swapFeeBps)) / 10_000n;
+}
+
 /** Same as TintPool.hashSwapExt. */
 export function hashSwapExt(ext) {
   return BigInt(keccak256(encodeAbiParameters(SWAP_EXT_ABI, [ext]))) % FIELD;

@@ -77,6 +77,13 @@ export const tintPoolAbi = [
   },
   {
     type: 'function',
+    name: 'swapFeeBps',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint16' }],
+  },
+  {
+    type: 'function',
     name: 'nullifierSpent',
     stateMutability: 'view',
     inputs: [{ type: 'uint256' }],

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
-import { cashOf, quote } from './chain.js';
+import { amountSold } from '@tint/sdk';
+import { cashOf, quote, swapFeeBps } from './chain.js';
 import { ensureAllowance, relayerFee, runAction, tokenBalance } from './engine.js';
 import { amt, friendly, parseAmount, short, usd } from './format.js';
 
@@ -41,6 +42,7 @@ export default function Trade({ net, wallet, session, address, balances, prices,
   const [needsCombine, setNeedsCombine] = useState(false);
   const [useRelay, setUseRelay] = useState(true);
   const [fee, setFee] = useState(null); // relayer fee in inAsset units
+  const [poolFeeBps, setPoolFeeBps] = useState(0n); // the pool's own swap fee, taken from what is sold
 
   const stock = stocks.find((s) => s.address === stockAddr);
   const asset = net.assets.find((a) => a.address === assetAddr);
@@ -80,20 +82,30 @@ export default function Trade({ net, wallet, session, address, balances, prices,
     };
   }, [tab, asset, address, net, run?.stage]);
 
-  // Live quote for buy / sell.
+  useEffect(() => {
+    let stop = false;
+    swapFeeBps(net)
+      .then((b) => !stop && setPoolFeeBps(b))
+      .catch(() => {});
+    return () => {
+      stop = true;
+    };
+  }, [net]);
+
+  // Live quote for buy / sell, on what the pool actually sells (after its swap fee).
   useEffect(() => {
     setQ(null);
     if (!isSwap || !amount) return;
     let stop = false;
     const id = setTimeout(async () => {
-      const r = await quote(net, inAsset.address, outAsset.address, amount).catch(() => null);
+      const r = await quote(net, inAsset.address, outAsset.address, amountSold(amount, 0n, poolFeeBps)).catch(() => null);
       if (!stop) setQ(r ?? 'none');
     }, 350);
     return () => {
       stop = true;
       clearTimeout(id);
     };
-  }, [isSwap, amount, inAsset, outAsset, net]);
+  }, [isSwap, amount, inAsset, outAsset, net, poolFeeBps]);
 
   // A new choice clears the last result (but finishing an action keeps "Done" on screen).
   const clear = () => {
@@ -138,7 +150,9 @@ export default function Trade({ net, wallet, session, address, balances, prices,
       } else if (tab === 'send') {
         action = wallet.send({ asset: asset.address, amount, to: to.trim(), ...via });
       } else {
-        const fresh = await quote(net, inAsset.address, outAsset.address, amount);
+        // The pool sells amountIn minus the relayer fee minus its own swap fee: quote that.
+        const bps = await swapFeeBps(net);
+        const fresh = await quote(net, inAsset.address, outAsset.address, amountSold(amount + f, f, bps));
         if (!fresh) throw new Error('There is no market for this pair right now.');
         const block = await net.client.getBlock();
         action = wallet.swap({

@@ -5,6 +5,8 @@
 // enforced by the agent_swap proof. The plan (how much per round, how often,
 // slippage) is code: this file. Model suggests, code decides, proof enforces.
 
+import { amountSold } from './swap.js';
+
 const toAddr = (x) => '0x' + BigInt(x).toString(16).padStart(40, '0');
 
 /**
@@ -64,8 +66,7 @@ export async function runRound({ wallet, rules, plan, relayer, swapFeeBps = 0n, 
       log(`Skipped a ${b.amountIn} buy: the relayer fee (${fee}) is over the rules' fee cap. Raise the amount per round.`);
       continue;
     }
-    const afterRelayer = b.amountIn - fee;
-    const toSell = afterRelayer - (afterRelayer * BigInt(swapFeeBps)) / 10_000n;
+    const toSell = amountSold(b.amountIn, fee, swapFeeBps);
     const q = await quote(b.assetIn, b.assetOut, toSell);
     if (!q || q.amountOut === 0n) {
       log(`Skipped ${b.assetOut}: no market right now.`);

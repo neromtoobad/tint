@@ -1,5 +1,6 @@
 // Networks, listed stocks and prices.
 import { createPublicClient, defineChain, http, parseUnits } from 'viem';
+import { tintPoolAbi } from '@tint/sdk';
 
 const deployments = Object.fromEntries(
   Object.values(import.meta.glob('./deployments/*.json', { eager: true, import: 'default' })).map((d) => [d.chainId, d]),
@@ -117,6 +118,11 @@ export async function quote(net, tokenIn, tokenOut, amountIn) {
   const ok = tries.filter((t) => t.status === 'fulfilled' && t.value.amountOut > 0n).map((t) => t.value);
   if (!ok.length) return null;
   return ok.reduce((best, q) => (q.amountOut > best.amountOut ? q : best));
+}
+
+/** The pool's swap fee in basis points (TintPool.swapFeeBps), taken from what a trade sells. */
+export async function swapFeeBps(net) {
+  return BigInt(await net.client.readContract({ address: net.pool, abi: tintPoolAbi, functionName: 'swapFeeBps' }));
 }
 
 /** Dollar price of one share (from selling 0.01 share), as a number. Null if there's no market. */
