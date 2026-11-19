@@ -35,7 +35,7 @@ On the fork, the full loop ran with real proofs and real transactions ([sdk/scri
 5. The agent key alone is refused when it tries to move money out.
 6. Stopping moves USDG, NVDA and TSLA back to the user's private balance, three `agentTransact` sends through the relayer.
 
-**What an agent's rules don't cover:** a holder of the agent key can still make bad trades inside the rules. For example, it can set a loose minimum and lose up to the per-buy cap to price moves or a sandwich, or trade more often than the plan says. The proof caps what each trade may be, not how good it is. The weekly budget is the plan, not the proof: what the account holds is the most the agent can ever spend.
+**What an agent's rules don't cover:** a holder of the agent key can still make bad trades inside the rules. For example, it can set a loose minimum and lose up to the per-buy cap to price moves or a sandwich on each buy, or trade more often than the plan says. The per-trade cap applies only to buys with cash: a sale (stock to cash, or one listed stock to another) has no size cap and no price floor in the proof, so one bad sale can lose most of what the account holds in that stock. The proof caps what each trade may be, not how good it is. The weekly budget is the plan, not the proof: what the account holds is the most the agent can ever lose.
 
 ### Private account
 
