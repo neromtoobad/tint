@@ -14,6 +14,7 @@ import { MerkleTree } from './tree.js';
 const EVENTS = ['NewCommitment', 'NewNullifier', 'Transacted', 'Swapped'].map((name) =>
   getAbiItem({ abi: tintPoolAbi, name }),
 );
+const TREE_ABI = [{ type: 'function', name: 'nextIndex', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint32' }] }];
 const ZERO = '0x0000000000000000000000000000000000000000';
 const toAddr = (x) => '0x' + BigInt(x).toString(16).padStart(40, '0');
 
@@ -63,26 +64,63 @@ export class TintWallet {
   }
 
   async _sync() {
-    const latest = await this.client.getBlockNumber();
-    while (this.nextBlock <= latest) {
-      let to = this.nextBlock + this.chunk - 1n;
-      if (to > latest) to = latest;
-      let logs;
-      try {
-        logs = await this.client.getLogs({ address: this.pool, events: EVENTS, fromBlock: this.nextBlock, toBlock: to });
-      } catch (e) {
-        if (this.chunk > 1_000n) {
-          this.chunk /= 4n; // the RPC refused the range; try smaller pieces
-          continue;
+    // A public RPC is several nodes behind one URL, and one can be a few blocks
+    // behind another: it may answer getLogs without the newest block's events.
+    // So read every new event first, check the count of notes against the tree's
+    // own count at that block, and apply nothing until they match.
+    for (let attempt = 1; ; attempt++) {
+      const latest = await this.client.getBlockNumber();
+      if (this.nextBlock > latest) break;
+      const logs = [];
+      for (let from = this.nextBlock; from <= latest; ) {
+        let to = from + this.chunk - 1n;
+        if (to > latest) to = latest;
+        try {
+          logs.push(...(await this.client.getLogs({ address: this.pool, events: EVENTS, fromBlock: from, toBlock: to })));
+        } catch (e) {
+          if (this.chunk > 1_000n) {
+            this.chunk /= 4n; // the RPC refused the range; try smaller pieces
+            continue;
+          }
+          throw e;
         }
-        throw e;
+        from = to + 1n;
+      }
+      const leaves = await this._leafCountAt(latest);
+      const found = logs.filter((l) => l.eventName === 'NewCommitment').length;
+      if (leaves === null || this.tree.size + found !== leaves) {
+        if (attempt >= 8) throw new Error('The network RPC is behind right now. Try again in a moment.');
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+        continue;
       }
       this._apply(logs);
-      this.nextBlock = to + 1n;
+      this.nextBlock = latest + 1n;
+      break;
     }
     for (const n of this.notes) {
       n.spent = this.nullifiers.has(n.nullifier);
       n.spentTx = this.nullifierTx.get(n.nullifier);
+    }
+    return this;
+  }
+
+  /** How many notes the tree held at `block`, or null if this RPC node doesn't have that block yet. */
+  async _leafCountAt(block) {
+    try {
+      this._tree ??= await this.client.readContract({ address: this.pool, abi: tintPoolAbi, functionName: 'tree' });
+      return Number(await this.client.readContract({ address: this._tree, abi: TREE_ABI, functionName: 'nextIndex', blockNumber: block }));
+    } catch {
+      return null;
+    }
+  }
+
+  /** Syncs until the wallet has read `block` (say, a receipt's block), even if an RPC node lags behind it. */
+  async syncPast(block) {
+    for (let i = 1; this.nextBlock <= BigInt(block); i++) {
+      await this.sync();
+      if (this.nextBlock > BigInt(block)) break;
+      if (i >= 20) throw new Error('The network RPC is behind right now. Try again in a moment.');
+      await new Promise((r) => setTimeout(r, 500));
     }
     return this;
   }

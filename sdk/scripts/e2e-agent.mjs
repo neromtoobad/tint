@@ -59,8 +59,11 @@ async function direct(action, label) {
   const hash = await wallet.writeContract({ address: dep.pool, abi: tintPoolAbi, functionName: action.functionName, args: callArgs(action, proof) });
   const r = await client.waitForTransactionReceipt({ hash });
   if (r.status !== 'success') throw new Error(`${label} reverted`);
+  lastBlock = r.blockNumber;
   console.log(`${label}: gas ${r.gasUsed}, sent by the user's wallet`);
 }
+
+let lastBlock = 0n; // the newest receipt: wallets made after it must read past it
 
 async function relayed(action, label) {
   const { proof } = await prove(action);
@@ -70,6 +73,7 @@ async function relayed(action, label) {
   if (!res.ok) throw new Error(`${label}: ${out.error}`);
   const r = await client.waitForTransactionReceipt({ hash: out.hash });
   if (r.status !== 'success') throw new Error(`${label} reverted`);
+  lastBlock = r.blockNumber;
   console.log(`${label}: gas ${r.gasUsed}, sent by the relayer ${r.from}, tx ${out.hash}`);
 }
 
@@ -82,12 +86,12 @@ if (cashAsset?.name?.includes('Test')) {
   await client.waitForTransactionReceipt({ hash: h });
 }
 await client.waitForTransactionReceipt({ hash: await wallet.writeContract({ address: USDG, abi: erc20Abi, functionName: 'approve', args: [dep.pool, 2n ** 256n - 1n] }) });
-let user = await make(keys).sync();
+let user = await make(keys).syncPast(lastBlock);
 await direct(user.deposit({ asset: USDG, amount: parseUnits('300', 6) }), 'add 300 USDG');
 
 // 2. an agent: two stocks, 40 USDG a round (20 each), at most 25 a buy, fee at most 5%, one week
 const now = Number((await client.getBlock()).timestamp);
-const index = Math.max(-1, ...(await user.sync()).agents().map((a) => a.index)) + 1;
+const index = Math.max(-1, ...(await user.syncPast(lastBlock)).agents().map((a) => a.index)) + 1;
 const rules = { cash: USDG, stocks: [NVDA, TSLA], maxBuy: parseUnits('25', 6), maxFeeBps: 500n, endsAt: BigInt(now + 7 * 86400), relayer: info.relayer };
 const plan = { amount: parseUnits('40', 6).toString(), every: 604800, slippageBps: 100 };
 const agentKey = agentKeyOf(keys.spendKey, index);
@@ -99,7 +103,7 @@ await relayed(
 );
 
 // 3. a fresh wallet finds the agent from the chain alone
-user = await make(keys).sync();
+user = await make(keys).syncPast(lastBlock);
 const found = user.agents().find((a) => a.index === index);
 if (!found) throw new Error('agent memo not found');
 console.log(`found agent #${found.index} "${found.name}" from chain events, plan ${json(found.plan)}`);
@@ -113,13 +117,17 @@ const out = execFileSync(process.execPath, [runner], {
 });
 process.stdout.write(out.trimEnd().replace(/^/gm, '  runner | ') + '\n');
 if (!/Bought/.test(out)) throw new Error('runner bought nothing');
+for (const h of out.match(/0x[0-9a-f]{64}/g) ?? []) {
+  const r = await client.getTransactionReceipt({ hash: h }).catch(() => null);
+  if (r && r.blockNumber > lastBlock) lastBlock = r.blockNumber;
+}
 
 // the runner reads the same account; a second check finds no round due
 const out2 = execFileSync(process.execPath, [runner], { env: { ...process.env, AGENT_KEY: agentString, DEPLOYMENT: depPath, RELAYER_URL: RELAYER, ONCE: '1' }, encoding: 'utf8' });
 if (!/next round in/.test(out2)) throw new Error('second check should wait for the next round');
 console.log('second check: no round due until next week');
 
-const agentOnly = await make(agentAccountKeys({ agentKey, userOwner: keys.owner, rules: found.rules })).sync();
+const agentOnly = await make(agentAccountKeys({ agentKey, userOwner: keys.owner, rules: found.rules })).syncPast(lastBlock);
 console.log('agent account holds:', fmt(agentOnly.balances()));
 
 // 5. the agent key alone can't move money out
@@ -132,10 +140,10 @@ try {
 }
 
 // 6. the user stops the agent: everything back to the private balance
-const owned = await make(agentAccountKeys({ agentKey, userOwner: keys.owner, rules: found.rules, spendKey: keys.spendKey })).sync();
+const owned = await make(agentAccountKeys({ agentKey, userOwner: keys.owner, rules: found.rules, spendKey: keys.spendKey })).syncPast(lastBlock);
 for (const asset of [USDG, NVDA, TSLA]) {
   for (;;) {
-    await owned.sync();
+    await owned.syncPast(lastBlock);
     const notes = owned.unspent(asset).sort((a, b) => (a.amount > b.amount ? -1 : 1)).slice(0, 2);
     if (!notes.length) break;
     const total = notes.reduce((s, n) => s + n.amount, 0n);
@@ -143,8 +151,8 @@ for (const asset of [USDG, NVDA, TSLA]) {
     await relayed(owned.send({ asset, amount: total - f, to: keys.address, relayer: info.relayer, fee: f }), `stop agent: ${names[asset.toLowerCase()]} back to the user`);
   }
 }
-user = await make(keys).sync();
-console.log('agent account after stop:', fmt((await owned.sync()).balances()));
+user = await make(keys).syncPast(lastBlock);
+console.log('agent account after stop:', fmt((await owned.syncPast(lastBlock)).balances()));
 console.log('user private balance:', fmt(user.balances()));
 for (const p of Object.values(provers)) await (await p).destroy();
 process.exit(0);

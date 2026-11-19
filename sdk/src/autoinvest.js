@@ -75,8 +75,9 @@ export async function runRound({ wallet, rules, plan, relayer, swapFeeBps = 0n, 
     const minOut = (q.amountOut * (10_000n - BigInt(plan.slippageBps ?? 100))) / 10_000n;
     const deadline = BigInt(Math.min(now + 600, Number(rules.endsAt)));
     const action = wallet.swap({ ...b, minOut, poolFee: q.fee, deadline, relayer, fee });
-    const { hash } = await submit(action);
-    await wallet.sync();
+    const { hash, block, receipt } = await submit(action);
+    const mined = block ?? receipt?.blockNumber;
+    await (mined !== undefined && wallet.syncPast ? wallet.syncPast(mined) : wallet.sync());
     const swap = wallet.swapsByTx.get(hash);
     done.push({ ...b, fee, minOut, hash, amountOut: swap?.amountOut });
     log(`Bought ${swap?.amountOut ?? '?'} of ${b.assetOut} for ${b.amountIn} (fee ${fee}) in ${hash}`);

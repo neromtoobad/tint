@@ -79,7 +79,7 @@ async function submit(action) {
   const { hash } = await relayer('/relay', { functionName: action.functionName, p, ext });
   const receipt = await client.waitForTransactionReceipt({ hash });
   if (receipt.status !== 'success') throw new Error(`reverted: ${hash}`);
-  return { hash };
+  return { hash, block: receipt.blockNumber };
 }
 
 // ------------------------------------------------------------------ loop
