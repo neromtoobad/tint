@@ -1,0 +1,59 @@
+{
+  "what": "sdk/scripts/e2e-agent.mjs on Robinhood Chain testnet (46630), relayer at relayer/src/server.js",
+  "date": "2026-11-19",
+  "chainId": 46630,
+  "deployment": "contracts/deployments/46630.json",
+  "relayer": "0x5eC4A5b29530b8Bee90A545B91737be64a685652",
+  "user": "0x821549d3C3885B9001bFb86041eB2fecf3B86cd6",
+  "steps": [
+    {
+      "step": "add 300 tUSDG (transact, user's wallet)",
+      "tx": "0xcb1b2dd8322c297279b0dff1955844113fc55d327f458698f4f1925656612156",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0xcb1b2dd8322c297279b0dff1955844113fc55d327f458698f4f1925656612156",
+      "gasUsed": 4358244
+    },
+    {
+      "step": "fund agent #1 with 100 tUSDG (private send, relayer)",
+      "tx": "0x552fc0bbca771305d346cd3b12c786c7f5c84118ac96ba84c0340a9e2fc82b3f",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0x552fc0bbca771305d346cd3b12c786c7f5c84118ac96ba84c0340a9e2fc82b3f",
+      "gasUsed": 4353145
+    },
+    {
+      "step": "runner: agentSwap 20 tUSDG -> TSLA (relayer)",
+      "tx": "0x862f6d6f2ecd2c683d672346e18a23c9511fe60161d344c043f6ac7f1a358d33",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0x862f6d6f2ecd2c683d672346e18a23c9511fe60161d344c043f6ac7f1a358d33",
+      "gasUsed": 4528416
+    },
+    {
+      "step": "runner: agentSwap 20 tUSDG -> AMZN (relayer)",
+      "tx": "0xe97459bec2899a97892bfce2ee94f0503602e9cc1d40d8abb870fb202e9a77d3",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0xe97459bec2899a97892bfce2ee94f0503602e9cc1d40d8abb870fb202e9a77d3",
+      "gasUsed": 4523465
+    },
+    {
+      "step": "stop: agentTransact USDG back (relayer)",
+      "tx": "0xdcf9472611cbd634a6d719b0fca482212ffbead704f14076abd05881a00bc6fb",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0xdcf9472611cbd634a6d719b0fca482212ffbead704f14076abd05881a00bc6fb",
+      "gasUsed": 4342841
+    },
+    {
+      "step": "stop: agentTransact TSLA back (relayer)",
+      "tx": "0xf832f484a5dbcee2bae230ca3ed7b26756998b92885fa13b547b4ba88192c336",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0xf832f484a5dbcee2bae230ca3ed7b26756998b92885fa13b547b4ba88192c336",
+      "gasUsed": 4381104
+    },
+    {
+      "step": "stop: agentTransact AMZN back (relayer)",
+      "tx": "0xae4fec63875a3ccab61bc030d83a27c1dcd27d4377829ec2560d91fd254f515c",
+      "url": "https://explorer.testnet.chain.robinhood.com/tx/0xae4fec63875a3ccab61bc030d83a27c1dcd27d4377829ec2560d91fd254f515c",
+      "gasUsed": 4391146
+    }
+  ],
+  "checks": [
+    "a fresh wallet found agent #1 'Weekly TSLA + AMZN' from chain events",
+    "a second runner check found no round due",
+    "the agent key alone was refused when moving money out",
+    "agent account empty after stop"
+  ],
+  "relayerGasSpentEth": 0.00026520117
+}

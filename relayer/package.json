@@ -6,7 +6,8 @@
   "description": "Sends Tint's private transactions so users' own wallets never appear as the sender",
   "scripts": {
     "start": "node src/server.js",
-    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json RELAYER_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a node src/server.js"
+    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json RELAYER_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a node src/server.js",
+    "dev:testnet": "DEPLOYMENT=../contracts/deployments/46630.json PORT=8791 node --env-file-if-exists=../.env.testnet src/server.js"
   },
   "dependencies": {
     "@tint/sdk": "file:../sdk",

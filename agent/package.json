@@ -6,7 +6,8 @@
   "description": "Tint agent runner: invests from an agent account on a schedule, inside rules a proof enforces",
   "scripts": {
     "start": "node run.mjs",
-    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json node run.mjs"
+    "dev:fork": "DEPLOYMENT=../contracts/deployments/31337.json node run.mjs",
+    "dev:testnet": "DEPLOYMENT=../contracts/deployments/46630.json RELAYER_URL=${RELAYER_URL:-http://127.0.0.1:8791} node run.mjs"
   },
   "dependencies": {
     "@tint/sdk": "file:../sdk",

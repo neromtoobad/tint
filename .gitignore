@@ -12,5 +12,5 @@ contracts/broadcast/
 contracts/deployments/31337.json
 web/dist/
 web/public/circuits/
-web/src/deployments/
+web/src/deployments/31337.json
 !.env.example

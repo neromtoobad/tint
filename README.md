@@ -6,7 +6,7 @@ You set the rules once: which stocks, how much a week, the most per trade, and u
 
 Under the agent is a private stock account: USDG and stock tokens in one balance that only you can read. You can also trade from it by hand, send from it and take money out.
 
-**Status:** the private account, the relayer and agents work end to end on a local fork of Robinhood mainnet (below). Today's agent is auto-invest (a schedule you set, no AI model yet). Nothing is on a public network yet; see "Not built yet".
+**Status:** the private account, the relayer and agents are deployed on **Robinhood Chain testnet** (chain 46630), with verified contracts, and the full agent loop has run there through the relayer ([below](#on-robinhood-chain-testnet)). Testnet uses Robinhood's own test stock tokens, traded on small test pools Tint seeded, with a test USDG. The same code also runs on a local fork of Robinhood mainnet with the real USDG, stocks and pools. Today's agent is auto-invest (a schedule you set, no AI model yet). Nothing is on mainnet yet, and the web app and relayer still run on your machine; see "Not built yet".
 
 Plan: [PLAN.md](PLAN.md). Brand: [brand/BRAND.md](brand/BRAND.md).
 
@@ -39,7 +39,7 @@ On the fork, the full loop ran with real proofs and real transactions ([sdk/scri
 
 ### Private account
 
-A **web wallet** ([web/](web)) that runs the whole loop on a local fork of Robinhood Chain mainnet, with the real USDG and stock tokens and their real Uniswap pools: add USDG, buy a stock privately, sell it, send to another Tint user, take money out, and open the balance read-only with a viewing key. Every proof is made in the browser in under a second. Nothing is deployed to a public network yet.
+A **web wallet** ([web/](web)) that runs the whole loop on a local fork of Robinhood Chain mainnet, with the real USDG and stock tokens and their real Uniswap pools: add USDG, buy a stock privately, sell it, send to another Tint user, take money out, and open the balance read-only with a viewing key. Every proof is made in the browser in under a second. The same wallet opens on Robinhood Chain testnet ([below](#on-robinhood-chain-testnet)).
 
 ![A take-out sent through the relayer on the local fork](docs/wallet-relayed-take-out.jpg)
 
@@ -91,12 +91,43 @@ At Robinhood Chain's 0.02 gwei, 4.5M gas is about 0.00009 ETH per action.
 - AI agents: a model that picks within the rules ("model suggests, code decides, proof enforces"). Today's agent follows a fixed plan.
 - Selling by plan: agents only buy each round; they can sell under the rules, but no plan sells yet.
 - A hosted runner: the runner runs where you start it.
-- The testnet deployment: the relayer and runner run only locally so far.
+- Hosting: the web app, relayer and runner run on your machine (pointed at testnet or a fork); no public site yet.
+- Mainnet: Tint is not deployed on Robinhood Chain mainnet.
 - The Stylus tree.
 
 See the phases in PLAN.md.
 
 **Trust model:** the pool owner can list tokens, set deposit caps, pause new deposits and set a swap fee of at most 1% (0 today). The owner can't move anyone's tokens, block withdrawals or touch notes. The code is unaudited, so caps stay low.
+
+## On Robinhood Chain testnet
+
+Deployed Nov 19 2026 with [tools/testnet-deploy.sh](tools/testnet-deploy.sh); addresses in [contracts/deployments/46630.json](contracts/deployments/46630.json). Every contract's source is verified on the [testnet explorer](https://explorer.testnet.chain.robinhood.com).
+
+| Contract | Address |
+|---|---|
+| TintPool | [`0x8354…dDD3`](https://explorer.testnet.chain.robinhood.com/address/0x83549c518fa3A866d87bbcD4562e26e6B085dDD3) |
+| TintTree | [`0xD31c…41cD`](https://explorer.testnet.chain.robinhood.com/address/0xD31cFdD9d9fe4aae0037D56E7fab3c629b1741cD) |
+| TransactVerifier · SwapVerifier | [`0xB754…895b`](https://explorer.testnet.chain.robinhood.com/address/0xB754E7738cA69d9af8AC578BCe04C62bC9da895b) · [`0x47d7…5fb6`](https://explorer.testnet.chain.robinhood.com/address/0x47d7eA3864786e2c02f1C4579783B336c9655fb6) |
+| AgentSwapVerifier · AgentTransactVerifier | [`0x4Fe1…7292`](https://explorer.testnet.chain.robinhood.com/address/0x4Fe11aA7b4003CecE640EFAF2142A16cFf8e7292) · [`0x4855…61D7`](https://explorer.testnet.chain.robinhood.com/address/0x4855139C35dac6270d97B14b3Ae5D9a0d4A661D7) |
+| TestUSDG (tUSDG, open faucet, 1,000 a call) | [`0x2b6B…c35F`](https://explorer.testnet.chain.robinhood.com/address/0x2b6B8F66AaaeFFc4cD51ACbAa5772e9225B9c35F) |
+
+**Test pools.** Testnet has Robinhood's test stock tokens (TSLA, AMZN, AMD, PLTR, NFLX) but no USDG pools, so [SeedTestnet.s.sol](contracts/script/SeedTestnet.s.sol) opens a full-range tUSDG/stock pool for each on the testnet's own Uniswap v3, with the 5 shares of each that the Robinhood faucet gives. TSLA ($382) and AMZN ($266) open at Robinhood Chain mainnet prices from Nov 18; AMD ($240), PLTR ($180) and NFLX ($110) have no mainnet pool, so those prices are set by hand. The pools are tiny, so every trade moves the price; the app labels them "test pool".
+
+**The agent loop on testnet** ([sdk/scripts/e2e-agent.mjs](sdk/scripts/e2e-agent.mjs), Nov 19), real proofs and transactions:
+
+| Step | Sent by | Gas | Tx |
+|---|---|---|---|
+| Add 300 tUSDG | user's wallet | 4.36M | [0xcb1b2dd8…](https://explorer.testnet.chain.robinhood.com/tx/0xcb1b2dd8322c297279b0dff1955844113fc55d327f458698f4f1925656612156) |
+| Fund the agent with 100 tUSDG, private send | relayer | 4.35M | [0x552fc0bb…](https://explorer.testnet.chain.robinhood.com/tx/0x552fc0bbca771305d346cd3b12c786c7f5c84118ac96ba84c0340a9e2fc82b3f) |
+| A fresh wallet finds the agent from chain events | — | — | — |
+| Runner: buy TSLA with 20 tUSDG (`agentSwap`) | relayer | 4.53M | [0x862f6d6f…](https://explorer.testnet.chain.robinhood.com/tx/0x862f6d6f2ecd2c683d672346e18a23c9511fe60161d344c043f6ac7f1a358d33) |
+| Runner: buy AMZN with 20 tUSDG (`agentSwap`) | relayer | 4.52M | [0xe97459be…](https://explorer.testnet.chain.robinhood.com/tx/0xe97459bec2899a97892bfce2ee94f0503602e9cc1d40d8abb870fb202e9a77d3) |
+| The agent key alone tries to move money out | — | refused before proving | — |
+| Stop: USDG back to the user (`agentTransact`) | relayer | 4.34M | [0xdcf94726…](https://explorer.testnet.chain.robinhood.com/tx/0xdcf9472611cbd634a6d719b0fca482212ffbead704f14076abd05881a00bc6fb) |
+| Stop: TSLA back | relayer | 4.38M | [0xf832f484…](https://explorer.testnet.chain.robinhood.com/tx/0xf832f484a5dbcee2bae230ca3ed7b26756998b92885fa13b547b4ba88192c336) |
+| Stop: AMZN back | relayer | 4.39M | [0xae4fec63…](https://explorer.testnet.chain.robinhood.com/tx/0xae4fec63875a3ccab61bc030d83a27c1dcd27d4377829ec2560d91fd254f515c) |
+
+The relayer ([`0x5eC4…5652`](https://explorer.testnet.chain.robinhood.com/address/0x5eC4A5b29530b8Bee90A545B91737be64a685652)) paid 0.00027 ETH of testnet gas for its six transactions. The web wallet, opened on testnet with that user's viewing key, rebuilds the same balance and history from the public RPC. Tx hashes for the run are in [evidence/testnet-e2e-agent.json](evidence/testnet-e2e-agent.json).
 
 ## Run the wallet locally
 
@@ -126,7 +157,27 @@ cd agent && npm install && AGENT_KEY=tintagent1… npm run dev:fork
 
 The public RPC only keeps recent state, so after about 10 minutes the fork starts failing reads ("historical state … is not available"). Restart anvil and rerun `dev-fork.sh` when that happens.
 
-Open http://localhost:5180 and choose **Use local test account** (anvil's public dev key, funded with 2,000 fork USDG by `dev-fork.sh`). The relayer uses anvil's account 2. Or connect a browser wallet pointed at `http://127.0.0.1:8545`, chain 31337.
+Open http://localhost:5180/?chain=31337 (the app opens testnet by default) and choose **Use local test account** (anvil's public dev key, funded with 2,000 fork USDG by `dev-fork.sh`). The relayer uses anvil's account 2. Or connect a browser wallet pointed at `http://127.0.0.1:8545`, chain 31337.
+
+## Run it against testnet
+
+The web app opens Robinhood Chain testnet by default and uses the contracts in `web/src/deployments/46630.json`. You need a browser wallet on chain 46630 (RPC `https://rpc.testnet.chain.robinhood.com`) with a little testnet ETH from the [faucet](https://faucet.testnet.chain.robinhood.com). In the app, **Get 1,000 test USDG** on the Add tab takes tUSDG from its faucet.
+
+A relayer needs its own funded testnet key, as `RELAYER_KEY` in the environment or in `.env.testnet` at the repo root:
+
+```bash
+cd relayer && npm install && npm run dev:testnet
+```
+
+```bash
+cd web && npm install && npm run dev
+```
+
+```bash
+cd agent && npm install && AGENT_KEY=tintagent1… npm run dev:testnet
+```
+
+The deploy itself: `DEPLOYER_KEY=0x… ./tools/testnet-deploy.sh`, with the deployer holding testnet ETH and the faucet's test stocks. `FORK=1` runs the same deploy against a local anvil fork of testnet.
 
 ## Build and test
 

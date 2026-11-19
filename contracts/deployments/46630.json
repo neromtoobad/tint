@@ -1,0 +1,56 @@
+{
+  "agentSwapVerifier": "0x4Fe11aA7b4003CecE640EFAF2142A16cFf8e7292",
+  "agentTransactVerifier": "0x4855139C35dac6270d97B14b3Ae5D9a0d4A661D7",
+  "chainId": 46630,
+  "pool": "0x83549c518fa3A866d87bbcD4562e26e6B085dDD3",
+  "swapVerifier": "0x47d7eA3864786e2c02f1C4579783B336c9655fb6",
+  "transactVerifier": "0xB754E7738cA69d9af8AC578BCe04C62bC9da895b",
+  "tree": "0xD31cFdD9d9fe4aae0037D56E7fab3c629b1741cD",
+  "uniswapFactory": "0xdf9e3D6ffaC4513dD7b053212bbECcbCD15ec932",
+  "startBlock": 155355371,
+  "rpc": "https://rpc.testnet.chain.robinhood.com",
+  "quoter": "0xDDcBe4989C8171F721c5e683C9C6339B59718213",
+  "positionManager": "0xFFe6CFc4f759b65f9B62c9D05A9E21a78cE93e12",
+  "explorer": "https://explorer.testnet.chain.robinhood.com",
+  "testPools": [
+    "0xAb5Ef0d874abb7D0D0a1EB50A308D395C09F4727",
+    "0x4e69b875e006213a9843a59Bc2fe607Cf9C07d3c",
+    "0x9EcFCc9D28383C2835CEDEbB4b7771610f260978",
+    "0xBaA2701B6C59cB22c34BfA92A2b4Ee55A7ba452d",
+    "0xbbdAf5F0394C14e2fEd1690D09a07c82bD326325"
+  ],
+  "assets": [
+    {
+      "symbol": "USDG",
+      "address": "0x2b6B8F66AaaeFFc4cD51ACbAa5772e9225B9c35F",
+      "decimals": 6,
+      "cash": true,
+      "name": "Tint Test USDG"
+    },
+    {
+      "symbol": "TSLA",
+      "address": "0xC9f9c86933092BbbfFF3CCb4b105A4A94bf3Bd4E",
+      "decimals": 18
+    },
+    {
+      "symbol": "AMZN",
+      "address": "0x5884aD2f920c162CFBbACc88C9C51AA75eC09E02",
+      "decimals": 18
+    },
+    {
+      "symbol": "AMD",
+      "address": "0x71178BAc73cBeb415514eB542a8995b82669778d",
+      "decimals": 18
+    },
+    {
+      "symbol": "PLTR",
+      "address": "0x1FBE1a0e43594b3455993B5dE5Fd0A7A266298d0",
+      "decimals": 18
+    },
+    {
+      "symbol": "NFLX",
+      "address": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
+      "decimals": 18
+    }
+  ]
+}
