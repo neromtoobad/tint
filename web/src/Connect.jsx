@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { friendly } from './format.js';
+import * as I from './icons.jsx';
 
 export default function Connect({ net, onUnlock }) {
   const [busy, setBusy] = useState(null);
@@ -22,90 +23,82 @@ export default function Connect({ net, onUnlock }) {
   return (
     <div className="hero">
       <div className="hero-copy">
-        <span className="label mono">
-          <i className="dot" /> Private stock agent
+        <span className="eyebrow mono">
+          <i className="dot live" /> Private stock agent · {net.short}
         </span>
         <h1>
           An agent that invests for you.
-          <br />
-          <span className="accent">Nobody sees what you hold.</span>
+          <span className="accent"> Nobody sees what you hold.</span>
         </h1>
         <p className="lead">
-          You set the rules once: which stocks, how much a week, the most per trade. Tint’s agent buys and sells inside
-          them, from a private account on Robinhood Chain that only you can read.
+          You set the rules once: which stocks, how much a week, the most per trade. Tint’s agent buys inside them, from a private
+          account on Robinhood Chain that only you can read.
         </p>
-        <p className="today mono">
+
+        <section className="card pad connect">
+          <ol className="steps">
+            <li className="step">
+              <span className="n mono">1</span>
+              <div>
+                <b>Connect a wallet</b>
+                <p className="muted sm">It pays gas and moves money in and out.</p>
+              </div>
+            </li>
+            <li className="step">
+              <span className="n mono">2</span>
+              <div>
+                <b>Sign one message</b>
+                <p className="muted sm">That signature makes your private keys in this browser. It isn’t a transaction and costs nothing.</p>
+              </div>
+            </li>
+          </ol>
+          <div className="row gap wrap">
+            <button className="btn" disabled={!!busy} onClick={() => go('injected')}>
+              {busy === 'injected' ? 'Waiting for your wallet…' : 'Connect wallet'}
+            </button>
+            {net.localKey && (
+              <button className="btn ghost" disabled={!!busy} onClick={() => go('local')}>
+                {busy === 'local' ? 'Unlocking…' : 'Use local test account'}
+              </button>
+            )}
+          </div>
+          {net.localKey && <p className="fine">The local test account is anvil’s public dev key. It only exists on this local fork.</p>}
+          <div className="view-key">
+            <button className="link sm" onClick={() => setShowView((v) => !v)}>
+              {showView ? 'Hide' : 'Have a viewing key? Open the account read only'}
+            </button>
+            {showView && (
+              <div className="row gap-s">
+                <input className="input mono" placeholder="tintview1…" value={viewing} onChange={(e) => setViewing(e.target.value)} />
+                <button className="btn ghost" disabled={!viewing.trim() || !!busy} onClick={() => go('view')}>
+                  Open
+                </button>
+              </div>
+            )}
+          </div>
+          {error && <p className="error">{error}</p>}
+        </section>
+
+        <p className="today">
           <b>Today:</b>{' '}
           {net.testPools
-            ? 'on Robinhood Chain testnet: Robinhood’s test stock tokens, traded on small test pools Tint seeded, with test USDG. The private account, the relayer and agents.'
-            : 'runs end to end on a local fork of Robinhood Chain: the private account, the relayer and agents.'}
+            ? 'Robinhood Chain testnet. Robinhood’s test stock tokens, small test pools Tint seeded, and test USDG. The private account, the relayer and agents all run for real.'
+            : 'a local fork of Robinhood Chain. The private account, the relayer and agents all run for real.'}
         </p>
-
-        <div className="steps">
-          <div className="step">
-            <span className="n mono">1</span>
-            <div>
-              <b>Connect a wallet</b>
-              <p className="muted">It pays gas and moves money in and out.</p>
-            </div>
-          </div>
-          <div className="step">
-            <span className="n mono">2</span>
-            <div>
-              <b>Sign one message</b>
-              <p className="muted">That signature makes your private keys here. It is not a transaction and costs nothing.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="row gap">
-          <button className="btn" disabled={!!busy} onClick={() => go('injected')}>
-            {busy === 'injected' ? 'Waiting for your wallet…' : 'Connect wallet'}
-          </button>
-          {net.localKey && (
-            <button className="btn ghost" disabled={!!busy} onClick={() => go('local')}>
-              {busy === 'local' ? 'Unlocking…' : 'Use local test account'}
-            </button>
-          )}
-        </div>
-        {net.localKey && (
-          <p className="fine mono">The local test account is anvil’s public dev key. It only exists on this local fork.</p>
-        )}
-
-        <button className="link" onClick={() => setShowView((v) => !v)}>
-          {showView ? 'Hide' : 'Open with a viewing key instead'}
-        </button>
-        {showView && (
-          <div className="row gap">
-            <input className="input mono" placeholder="tintview1…" value={viewing} onChange={(e) => setViewing(e.target.value)} />
-            <button className="btn ghost" disabled={!viewing.trim() || !!busy} onClick={() => go('view')}>
-              Open
-            </button>
-          </div>
-        )}
-        {error && <p className="error">{error}</p>}
       </div>
 
-      <div className="hero-card dark">
-        <img src="/mascot.png" alt="" className="hero-mascot" />
-        <div className="hero-card-text">
-          <span className="label mono light">
-            <i className="dot sky" /> What the explorer shows
+      <div className="hero-art">
+        <img src="/mascot-cutout.webp" alt="Tint’s mascot, a white pebble in silver shades" className="hero-mascot" />
+        <div className="peek">
+          <span className="peek-head mono">
+            <I.EyeOff width={14} height={14} /> What the explorer shows
           </span>
-          <div className="peek">
-            <div>
-              <span className="mono">Who they paid</span>
-              <b>?</b>
+          {['Your balance', 'What you hold', 'Who you paid'].map((k) => (
+            <div key={k}>
+              <span>{k}</span>
+              <b className="mono">?</b>
             </div>
-            <div>
-              <span className="mono">Their balance</span>
-              <b>?</b>
-            </div>
-            <div>
-              <span className="mono">What they hold</span>
-              <b>?</b>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

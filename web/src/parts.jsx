@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { encodeAddress, exportViewingKey } from '@tint/sdk';
 import { assetOf } from './chain.js';
 import { amt, short, toNumber, usd } from './format.js';
+import * as I from './icons.jsx';
 
 function rows(net, balances, prices) {
   return Object.entries(balances)
@@ -15,32 +16,60 @@ function rows(net, balances, prices) {
     .sort((a, b) => (b.usd ?? 0) - (a.usd ?? 0));
 }
 
-export function BalanceCard({ net, balances, prices, synced, error, viewOnly }) {
+export function Money({ value, className = '' }) {
+  if (value == null) return <span className={className}>—</span>;
+  const [whole, cents] = usd(value).split('.');
+  return (
+    <span className={`money num ${className}`}>
+      {whole}
+      {cents != null && <span className="cents">.{cents}</span>}
+    </span>
+  );
+}
+
+export function BalanceCard({ net, balances, prices, synced, error, viewOnly, onGo }) {
   const list = rows(net, balances, prices);
   const total = list.reduce((s, r) => s + (r.usd ?? 0), 0);
   const unpriced = list.some((r) => r.usd == null);
+  const stocks = list.filter((r) => !r.asset.cash).length;
   return (
-    <section className="card dark balance">
-      <div className="balance-text">
-        <span className="label mono light">
-          <i className="dot sky" /> Private balance
+    <section className="lens">
+      <div className="lens-head">
+        <span>Private balance</span>
+        <span className="badge">
+          <I.EyeOff width={14} height={14} /> Only you
         </span>
-        <div className="big num">{synced ? usd(total) : 'Reading the pool…'}</div>
-        <p className="light-muted">
-          {viewOnly
-            ? 'You are looking through a viewing key.'
-            : 'Only you, and anyone you give your viewing key, can see this number.'}
-          {unpriced && ' Some holdings have no market price yet.'}
-        </p>
-        {error && <p className="light-error">Couldn’t reach the network: {error}</p>}
-        <div className="row gap-s">
-          <span className="chip dark mono">{list.length} holding{list.length === 1 ? '' : 's'}</span>
-          <span className="chip dark mono">Rebuilt from chain events, nothing stored</span>
-        </div>
       </div>
-      <img src="/mascot.png" alt="" className="balance-mascot" />
+      <div className="lens-total">{synced ? <Money value={total} /> : <span className="reading">Reading the pool…</span>}</div>
+      <p className="lens-sub">
+        {!synced
+          ? 'Rebuilding your balance from the pool’s events on this device.'
+          : `${stocks} stock${stocks === 1 ? '' : 's'} and USDG · ${viewOnly ? 'seen through a viewing key' : 'on chain it’s only encrypted notes'}`}
+        {unpriced && ' · some holdings have no market price yet'}
+      </p>
+      {error && <p className="lens-error">Couldn’t reach the network: {error}</p>}
+      {onGo && !viewOnly && (
+        <div className="lens-actions">
+          <button className="btn light" onClick={() => onGo('trade', 'buy')}>
+            <I.Plus width={18} height={18} /> Buy a stock
+          </button>
+          <button className="btn glass" onClick={() => onGo('move', 'add')}>
+            <I.ArrowDown width={18} height={18} /> Add money
+          </button>
+          <button className="btn glass" onClick={() => onGo('move', 'send')}>
+            <I.ArrowUpRight width={18} height={18} /> Send
+          </button>
+          <button className="btn glass" onClick={() => onGo('agents')}>
+            <I.Agent width={18} height={18} /> Agents
+          </button>
+        </div>
+      )}
     </section>
   );
+}
+
+export function Ticker({ asset }) {
+  return <span className={`ticker mono ${asset?.cash ? 'cash' : ''}`}>{asset?.cash ? '$' : asset?.symbol?.slice(0, 4)}</span>;
 }
 
 export function Holdings({ net, balances, prices, synced }) {
@@ -49,7 +78,7 @@ export function Holdings({ net, balances, prices, synced }) {
     <section className="card pad">
       <div className="card-head">
         <h3>Holdings</h3>
-        <span className="label mono">Price from Uniswap</span>
+        <span className="hint">Prices from Uniswap{net.testPools ? ' test pools' : ''}</span>
       </div>
       {!synced ? (
         <p className="muted">Reading the pool…</p>
@@ -59,19 +88,49 @@ export function Holdings({ net, balances, prices, synced }) {
         <div className="table">
           {list.map(({ asset, value, price, usd: v }) => (
             <div className="tr" key={asset.address}>
-              <span className="ticker mono">{asset.symbol}</span>
+              <Ticker asset={asset} />
               <span className="grow">
-                <b>{asset.name}</b>
+                <b>{asset.cash ? 'USDG' : asset.symbol}</b>
                 <span className="muted sm num">
-                  {amt(value, asset)} {asset.cash ? 'USDG' : 'shares'}
-                  {!asset.cash && price != null && ` · ${usd(price)}`}
+                  {asset.cash ? asset.name : `${amt(value, asset)} shares${price != null ? ` · ${usd(price)}` : ''}`}
                 </span>
               </span>
-              <span className="num right">{usd(v)}</span>
+              <Money value={v} className="right" />
             </div>
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+// What someone watching the chain learns about this account, next to what you see.
+export function Explorer({ relayer, onGo }) {
+  const rows = [
+    ['Your balance', 'Hidden'],
+    ['What you hold', 'Hidden'],
+    ['Who you pay', 'Hidden'],
+    ['Who sent your trades', relayer ? 'The relayer' : 'Your wallet'],
+    ['Money you add', 'Your wallet and the amount'],
+  ];
+  return (
+    <section className="card pad">
+      <div className="card-head">
+        <h3>What the explorer sees</h3>
+        {onGo && (
+          <button className="link sm" onClick={() => onGo('privacy')}>
+            Details
+          </button>
+        )}
+      </div>
+      <div className="table">
+        {rows.map(([what, seen]) => (
+          <div className="tr" key={what}>
+            <span className="grow">{what}</span>
+            <span className={`seen ${seen === 'Hidden' || seen === 'The relayer' ? 'hidden' : ''}`}>{seen}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -94,12 +153,21 @@ function describe(net, h) {
   return { title: 'Combined notes', detail: q };
 }
 
+const KIND_ICON = {
+  swap: <I.Trade width={16} height={16} />,
+  deposit: <I.ArrowDown width={16} height={16} />,
+  receive: <I.ArrowDown width={16} height={16} />,
+  withdraw: <I.ArrowUpRight width={16} height={16} />,
+  send: <I.ArrowUpRight width={16} height={16} />,
+  'fund-agent': <I.Agent width={16} height={16} />,
+};
+
 export function Activity({ net, history, synced }) {
   return (
     <section className="card pad">
       <div className="card-head">
         <h3>Activity</h3>
-        <span className="label mono">Only you see this list</span>
+        <span className="hint">Only you see this list</span>
       </div>
       {!synced ? (
         <p className="muted">Reading the pool…</p>
@@ -111,12 +179,12 @@ export function Activity({ net, history, synced }) {
             const d = describe(net, h);
             return (
               <div className="tr" key={h.tx + h.type}>
-                <span className={`kind mono ${h.type}`}>{{ swap: 'Trade', deposit: 'In', withdraw: 'Out', send: 'Sent', receive: 'Got', 'fund-agent': 'Agent' }[h.type] ?? 'Note'}</span>
+                <span className={`kind ${h.type}`}>{KIND_ICON[h.type] ?? <I.Move width={16} height={16} />}</span>
                 <span className="grow">
                   <b>{d.title}</b>
                   <span className="muted sm num">{d.detail}</span>
                 </span>
-                <span className="mono sm muted right" title={h.tx}>
+                <span className="mono xs muted right" title={h.tx}>
                   {net.explorer ? (
                     <a href={`${net.explorer}/tx/${h.tx}`} target="_blank" rel="noreferrer">
                       {short(h.tx)}
@@ -147,7 +215,7 @@ export function Visibility({ relayer }) {
     <section className="card pad">
       <div className="card-head">
         <h3>What others can see</h3>
-        <span className="label mono">{relayer ? 'Relayer on' : 'No relayer'}</span>
+        <span className={`state ${relayer ? 'on' : ''}`}>{relayer ? 'Relayer on' : 'No relayer'}</span>
       </div>
       <div className="table">
         {lines.map(([what, seen]) => (
@@ -159,7 +227,7 @@ export function Visibility({ relayer }) {
           </div>
         ))}
       </div>
-      <p className="fine mono">
+      <p className="fine">
         {relayer
           ? 'The relayer sees your IP address and the transaction, never your keys. Take out to an address you have never used, or the link comes back through it.'
           : 'Start the relayer (relayer/) so trades and take-outs stop pointing back to your address.'}
@@ -192,7 +260,7 @@ export function Keys({ keys }) {
           <code className="mono">{short(tintAddress, 14, 8)}</code>
         </div>
         <button className="btn ghost sm" onClick={() => copy('addr', tintAddress)}>
-          {copied === 'addr' ? 'Copied' : 'Copy'}
+          {copied === 'addr' ? <I.Check width={16} height={16} /> : <I.Copy width={16} height={16} />} {copied === 'addr' ? 'Copied' : 'Copy'}
         </button>
       </div>
       <div className="keyrow">
@@ -201,7 +269,7 @@ export function Keys({ keys }) {
           <span className="muted sm">Shows your balance and history, and can’t move anything. For an accountant or auditor.</span>
         </div>
         <button className="btn ghost sm" onClick={() => copy('view', exportViewingKey(keys))}>
-          {copied === 'view' ? 'Copied' : 'Copy'}
+          {copied === 'view' ? <I.Check width={16} height={16} /> : <I.Copy width={16} height={16} />} {copied === 'view' ? 'Copied' : 'Copy'}
         </button>
       </div>
     </section>

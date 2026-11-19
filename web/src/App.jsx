@@ -8,7 +8,8 @@ import { short } from './format.js';
 import Connect from './Connect.jsx';
 import Trade from './Trade.jsx';
 import Agents from './Agents.jsx';
-import { Activity, BalanceCard, Holdings, Keys, Visibility } from './parts.jsx';
+import { Activity, BalanceCard, Explorer, Holdings, Keys, Visibility } from './parts.jsx';
+import * as I from './icons.jsx';
 
 const ready = initHash();
 
@@ -20,6 +21,8 @@ export default function App() {
   const [prices, setPrices] = useState({});
   const [syncError, setSyncError] = useState(null);
   const [relayer, setRelayer] = useState(null);
+  const [page, setPage] = useState('home');
+  const [tab, setTab] = useState(null); // which tab a page opens on, when a button sends you there
   const syncing = useRef(false);
 
   const sync = useCallback(async () => {
@@ -114,90 +117,184 @@ export default function App() {
   const lock = () => {
     setSession(null);
     setWallet(null);
+    setPage('home');
   };
 
   const address = session?.account?.address ?? session?.account;
   const synced = wallet && tick > 0;
   const balances = useMemo(() => (synced ? wallet.balances() : {}), [wallet, synced, tick]);
   const history = useMemo(() => (synced ? wallet.history() : []), [wallet, synced, tick]);
+  const block = wallet && wallet.nextBlock > 0n ? wallet.nextBlock - 1n : null;
 
   if (!net) {
     return (
-      <Shell>
+      <div className="lock-page">
         <div className="card pad">
           <h2>No Tint pool found</h2>
           <p className="muted">Deploy one first (tools/dev-fork.sh), then restart this page.</p>
         </div>
-      </Shell>
+      </div>
     );
   }
 
-  return (
-    <Shell
-      net={net}
-      right={
-        session && (
-          <>
-            <span className="chip mono">
-              <i className="dot" /> {session.viewOnly ? 'Viewing key · read only' : `${session.label} · ${short(address)}`}
-            </span>
-            <button className="btn ghost sm" onClick={lock}>
-              Lock
-            </button>
-          </>
-        )
-      }
-      block={wallet ? wallet.nextBlock - 1n : null}
-    >
-      {!session ? (
+  if (!session) {
+    return (
+      <div className="lock-page">
+        <header className="lock-top">
+          <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
+          <NetChip net={net} />
+        </header>
         <Connect net={net} onUnlock={unlock} />
-      ) : (
-        <div className="grid">
-          <div className="col">
-            <BalanceCard net={net} balances={balances} prices={prices} synced={synced} error={syncError} viewOnly={session.viewOnly} />
-            {!session.viewOnly && <Agents net={net} wallet={wallet} session={session} prices={prices} relayer={relayer} synced={synced} tick={tick} onDone={sync} />}
-            <Holdings net={net} balances={balances} prices={prices} synced={synced} />
-            <Activity net={net} history={history} synced={synced} />
+        <StatusLine net={net} relayer={relayer} block={null} />
+      </div>
+    );
+  }
+
+  const pages = PAGES.filter((p) => !session.viewOnly || p.viewOnly);
+  const current = pages.find((p) => p.key === page) ? page : 'home';
+  const go = (key, tab) => {
+    setPage(key);
+    setTab(tab ?? null);
+    window.scrollTo({ top: 0 });
+  };
+  const props = { net, wallet, session, address, balances, prices, synced, relayer, tick, onDone: sync };
+
+  return (
+    <div className="app">
+      <aside className="side">
+        <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
+        <NetChip net={net} />
+        <nav className="nav">
+          {pages.map(({ key, label, Icon }) => (
+            <button key={key} className={current === key ? 'on' : ''} onClick={() => go(key)}>
+              <Icon /> {label}
+            </button>
+          ))}
+        </nav>
+        <div className="side-foot">
+          <div className="who">
+            <span className="who-label">{session.viewOnly ? 'Viewing key' : session.label}</span>
+            <span className="mono who-addr">{session.viewOnly ? 'Read only' : short(address)}</span>
           </div>
-          <div className="col">
-            {session.viewOnly ? (
-              <div className="card pad">
-                <h3>Read only</h3>
-                <p className="muted">This is a viewing key. It shows the balance and history, and can’t move anything.</p>
-              </div>
-            ) : (
-              <Trade net={net} wallet={wallet} session={session} address={address} balances={balances} prices={prices} synced={synced} onDone={sync} relayer={relayer} />
-            )}
-            <Visibility relayer={relayer} />
-            {!session.viewOnly && <Keys keys={session.keys} />}
-          </div>
+          <button className="icon-btn" onClick={lock} title="Lock">
+            <I.Lock />
+          </button>
         </div>
-      )}
-    </Shell>
+      </aside>
+
+      <div className="main">
+        <header className="m-top">
+          <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
+          <div className="row gap-s">
+            <NetChip net={net} />
+            <button className="icon-btn" onClick={lock} title="Lock">
+              <I.Lock />
+            </button>
+          </div>
+        </header>
+
+        {current === 'home' && (
+          <Page title="Portfolio" sub={session.viewOnly ? 'Read only, through a viewing key.' : 'Your private balance. Only you can read it.'}>
+            <BalanceCard net={net} balances={balances} prices={prices} synced={synced} error={syncError} viewOnly={session.viewOnly} onGo={go} />
+            <div className="two">
+              <Holdings net={net} balances={balances} prices={prices} synced={synced} />
+              <Explorer relayer={relayer} onGo={session.viewOnly ? null : go} />
+            </div>
+            <Activity net={net} history={history} synced={synced} />
+          </Page>
+        )}
+        {current === 'trade' && (
+          <Page title="Trade" sub="Buy and sell stock tokens from your private balance. The relayer sends the trade, so it doesn't point back to you.">
+            <Trade key={`trade-${tab}`} {...props} tabs={['buy', 'sell']} initialTab={tab ?? 'buy'} />
+          </Page>
+        )}
+        {current === 'move' && (
+          <Page title="Move money" sub="Add USDG or stocks, send to another Tint user, or take money out.">
+            <Trade key={`move-${tab}`} {...props} tabs={['add', 'send', 'out']} initialTab={tab ?? 'add'} />
+          </Page>
+        )}
+        {current === 'agents' && (
+          <Page title="Agents" sub="An agent buys stocks for you on a schedule, from its own private account, inside rules a proof enforces.">
+            <Agents {...props} />
+          </Page>
+        )}
+        {current === 'privacy' && (
+          <Page title="Privacy and keys" sub="What anyone watching the chain can see, and the keys that let you share your history.">
+            <div className="two">
+              <Visibility relayer={relayer} />
+              {session.viewOnly ? (
+                <section className="card pad">
+                  <h3>Read only</h3>
+                  <p className="muted">This is a viewing key. It shows the balance and history, and can’t move anything.</p>
+                </section>
+              ) : (
+                <Keys keys={session.keys} />
+              )}
+            </div>
+          </Page>
+        )}
+
+        <StatusLine net={net} relayer={relayer} block={block} />
+      </div>
+
+      <nav className="tabbar">
+        {pages.map(({ key, short: label, Icon }) => (
+          <button key={key} className={current === key ? 'on' : ''} onClick={() => go(key)}>
+            <Icon />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
   );
 }
 
-function Shell({ children, net, right, block }) {
+const PAGES = [
+  { key: 'home', label: 'Portfolio', short: 'Home', Icon: I.Home, viewOnly: true },
+  { key: 'trade', label: 'Trade', short: 'Trade', Icon: I.Trade },
+  { key: 'move', label: 'Move money', short: 'Money', Icon: I.Move },
+  { key: 'agents', label: 'Agents', short: 'Agents', Icon: I.Agent },
+  { key: 'privacy', label: 'Privacy and keys', short: 'Privacy', Icon: I.EyeOff, viewOnly: true },
+];
+
+function Page({ title, sub, children }) {
   return (
-    <div className="page">
-      <header className="top">
-        <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
-        <div className="top-right">
-          {net && (
-            <span className="chip mono" title={net.label}>
-              {net.short}
-              {block != null && block > 0n ? ` · block ${block.toLocaleString('en-US')}` : ''}
-            </span>
-          )}
-          {right}
-        </div>
-      </header>
-      <main>{children}</main>
-      <footer className="foot mono">
-        <span>Tint · private stock agent on Robinhood Chain</span>
-        <span>Proofs are made in this browser. Keys never leave it.</span>
-      </footer>
-    </div>
+    <main className="page">
+      <div className="page-head">
+        <h1>{title}</h1>
+        {sub && <p>{sub}</p>}
+      </div>
+      {children}
+    </main>
+  );
+}
+
+function NetChip({ net, block }) {
+  return (
+    <span className="net-chip" title={net.label}>
+      <i className="dot live" />
+      <span className="net-long">{net.label}</span>
+      <span className="net-short">{net.short}</span>
+      {block != null && <span className="mono muted">#{block.toLocaleString('en-US')}</span>}
+    </span>
+  );
+}
+
+function StatusLine({ net, relayer, block }) {
+  return (
+    <footer className="status mono">
+      <span>
+        <i className="dot live" /> {net.short}
+        {block != null && ` · block ${block.toLocaleString('en-US')}`}
+      </span>
+      <span>{relayer ? 'Relayer on' : 'Relayer off'}</span>
+      <span>Proofs are made in this browser. Keys never leave it.</span>
+      {net.explorer && (
+        <a href={`${net.explorer}/address/${net.pool}`} target="_blank" rel="noreferrer">
+          Pool contract
+        </a>
+      )}
+    </footer>
   );
 }
 

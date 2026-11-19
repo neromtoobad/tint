@@ -4,6 +4,7 @@ import { amountSold } from '@tint/sdk';
 import { cashOf, quote, swapFeeBps } from './chain.js';
 import { ensureAllowance, relayerFee, runAction, tokenBalance } from './engine.js';
 import { amt, friendly, parseAmount, short, usd } from './format.js';
+import { Money, Ticker } from './parts.jsx';
 
 const TABS = [
   ['buy', 'Buy'],
@@ -23,13 +24,14 @@ const STAGES = {
   done: 'Done',
 };
 
-export default function Trade({ net, wallet, session, address, balances, prices, synced, onDone, relayer }) {
+export default function Trade({ net, wallet, session, address, balances, prices, synced, onDone, relayer, tabs = ['buy', 'sell', 'add', 'send', 'out'], initialTab }) {
   const cash = cashOf(net);
   const stocks = useMemo(() => net.assets.filter((a) => !a.cash), [net]);
   const tradeable = stocks.filter((s) => prices[s.address.toLowerCase()] != null);
   const held = (a) => balances[a.address.toLowerCase()] ?? 0n;
 
-  const [tab, setTab] = useState('buy');
+  const [tab, setTab] = useState(initialTab ?? tabs[0]);
+  const shown = TABS.filter(([k]) => tabs.includes(k));
   const [stockAddr, setStockAddr] = useState(stocks[0].address);
   const [assetAddr, setAssetAddr] = useState(cash.address); // for add / send / take out
   const [text, setText] = useState('');
@@ -211,62 +213,100 @@ export default function Trade({ net, wallet, session, address, balances, prices,
     out: 'Take out',
   }[tab];
 
-  return (
-    <section className="card pad trade">
-      <div className="seg" role="tablist">
-        {TABS.map(([k, v]) => (
+  const ticket = (
+    <section className="card pad ticket">
+      <div className="seg" role="tablist" style={{ gridTemplateColumns: `repeat(${shown.length}, 1fr)` }}>
+        {shown.map(([k, v]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} disabled={busy}>
             {v}
           </button>
         ))}
       </div>
 
-      {isSwap && (
-        <div className="field">
-          <span className="label mono">Stock</span>
-          <div className="pills">
-            {stocks.map((s) => {
-              const p = prices[s.address.toLowerCase()];
-              return (
-                <button key={s.address} className={`pill ${s.address === stockAddr ? 'on' : ''}`} disabled={busy || p == null} onClick={() => setStockAddr(s.address)} title={p == null ? 'No market yet' : s.name}>
-                  <b className="mono">{s.symbol}</b>
-                  <span className="num">{p == null ? 'no market' : usd(p)}</span>
-                </button>
-              );
-            })}
-          </div>
+      {isSwap && stock && (
+        <div className="picked">
+          <Ticker asset={stock} />
+          <span className="grow">
+            <b>{stock.symbol}</b>
+            <span className="muted sm">{stock.name}</span>
+          </span>
+          <span className="right">
+            <Money value={price} />
+            <span className="muted xs mono">{net.testPools ? 'test pool' : 'Uniswap'}</span>
+          </span>
         </div>
       )}
 
       {!isSwap && (
         <div className="field">
-          <span className="label mono">Asset</span>
-          <select className="input" value={assetAddr} onChange={(e) => setAssetAddr(e.target.value)} disabled={busy}>
+          <span className="flabel">Asset</span>
+          <div className="pills">
             {net.assets.map((a) => (
-              <option key={a.address} value={a.address}>
-                {a.symbol} · {a.name}
-              </option>
+              <button key={a.address} className={`pill ${a.address === assetAddr ? 'on' : ''}`} disabled={busy} onClick={() => setAssetAddr(a.address)}>
+                <b className="mono">{a.cash ? 'USDG' : a.symbol}</b>
+                <span className="num">{amt(held(a), a)}</span>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       )}
 
       <div className="field">
         <div className="field-head">
-          <span className="label mono">{tab === 'buy' ? 'Pay with USDG' : tab === 'sell' ? `Shares of ${stock?.symbol}` : 'Amount'}</span>
+          <span className="flabel">{tab === 'buy' ? 'You pay' : tab === 'sell' ? 'You sell' : 'Amount'}</span>
           {spendable != null && (
             <button className="link sm num" onClick={() => maxSpend != null && type(formatUnits(maxSpend, inAsset.decimals))} disabled={busy}>
-              {tab === 'add' ? 'In your wallet' : 'Private'}: {amt(spendable, inAsset)} {inAsset.symbol}
+              {tab === 'add' ? 'In your wallet' : 'Private'}: {amt(spendable, inAsset)} {inAsset.cash ? 'USDG' : inAsset.symbol} · Max
             </button>
           )}
         </div>
-        <input className="input big-input num" inputMode="decimal" placeholder="0.00" value={text} onChange={(e) => type(e.target.value)} disabled={busy} />
+        <div className="amount">
+          <input className="amount-input num" inputMode="decimal" placeholder="0" value={text} onChange={(e) => type(e.target.value)} disabled={busy} />
+          <span className="amount-unit mono">{inAsset.cash ? 'USDG' : inAsset.symbol}</span>
+        </div>
         {over && <span className="warn">That is more than you have.</span>}
       </div>
 
+      {isSwap && (
+        <div className="quote">
+          {!amount ? (
+            <span className="muted">Enter an amount to see a price.</span>
+          ) : q === null ? (
+            <span className="muted">Getting a price…</span>
+          ) : q === 'none' ? (
+            <span className="warn">
+              {prices[stock.address.toLowerCase()] != null ? 'The pool can’t fill this much. Try a smaller amount.' : 'No market for this pair.'}
+            </span>
+          ) : (
+            <>
+              <div className="quote-main">
+                <span className="muted">You get about</span>
+                <b className="num">
+                  {amt(q.amountOut, outAsset)} {outAsset.cash ? 'USDG' : outAsset.symbol}
+                </b>
+              </div>
+              <div className="quote-rows">
+                <span>At least</span>
+                <span className="num">
+                  {amt((q.amountOut * (10_000n - SLIPPAGE_BPS)) / 10_000n, outAsset)} {outAsset.cash ? 'USDG' : outAsset.symbol}
+                </span>
+                <span>Pool fee</span>
+                <span className="num">{q.poolFee / 10000}%</span>
+                {relayed && (
+                  <>
+                    <span>Relayer fee</span>
+                    <span className="num">{fee == null ? '…' : `${amt(fee, inAsset)} ${inAsset.cash ? 'USDG' : inAsset.symbol}`}</span>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {(tab === 'out' || tab === 'send') && (
         <div className="field">
-          <span className="label mono">{tab === 'out' ? 'Send to address' : 'Their Tint address'}</span>
+          <span className="flabel">{tab === 'out' ? 'Send to address' : 'Their Tint address'}</span>
           <input className="input mono" placeholder={tab === 'out' ? '0x…' : 'tint1…'} value={to} onChange={(e) => setTo(e.target.value)} disabled={busy} />
           {tab === 'out' && address && (
             <button className="link sm" onClick={() => setTo(address)} disabled={busy}>
@@ -278,64 +318,38 @@ export default function Trade({ net, wallet, session, address, balances, prices,
       )}
 
       {tab !== 'add' && (
-        <div className="relay">
+        <label className={`relay ${relayed ? 'on' : ''}`}>
           {relayer ? (
             <>
-              <label className="check">
-                <input type="checkbox" checked={useRelay} onChange={(e) => setUseRelay(e.target.checked)} disabled={busy} />
-                <span>Send through the relayer</span>
-              </label>
-              <span className="muted sm num">
-                {relayed
-                  ? fee == null
-                    ? 'Getting the fee…'
-                    : `Fee ${amt(fee, inAsset)} ${inAsset.symbol} · your wallet stays out of it`
-                  : 'Off: your wallet sends it and shows as the sender'}
+              <input type="checkbox" checked={useRelay} onChange={(e) => setUseRelay(e.target.checked)} disabled={busy} />
+              <span className="grow">
+                <b>Send through the relayer</b>
+                <span className="muted sm num">
+                  {relayed
+                    ? fee == null
+                      ? 'Getting the fee…'
+                      : `Fee ${amt(fee, inAsset)} ${inAsset.cash ? 'USDG' : inAsset.symbol}. Your wallet stays out of it.`
+                    : 'Off: your wallet sends it and shows as the sender.'}
+                </span>
               </span>
             </>
           ) : (
             <span className="muted sm">No relayer is running, so your wallet sends this and the explorer shows it as the sender.</span>
           )}
-        </div>
-      )}
-
-      {isSwap && (
-        <div className="quote">
-          {!amount ? (
-            <span className="muted">Enter an amount to see a price.</span>
-          ) : q === null ? (
-            <span className="muted">Getting a price…</span>
-          ) : q === 'none' ? (
-            <span className="warn">No market for this pair.</span>
-          ) : (
-            <>
-              <div className="quote-main">
-                <span className="muted">You get about</span>
-                <b className="num">
-                  {amt(q.amountOut, outAsset)} {outAsset.cash ? 'USDG' : outAsset.symbol}
-                </b>
-              </div>
-              <div className="quote-meta mono">
-                {price != null && <span>{usd(price)} a share</span>}
-                <span>pool fee {q.poolFee / 10000}%</span>
-                {net.testPools && <span title="Testnet has no real stock markets, so Tint seeded small Uniswap pools at set prices">test pool</span>}
-                <span>at least {amt((q.amountOut * (10_000n - SLIPPAGE_BPS)) / 10_000n, outAsset)}</span>
-              </div>
-            </>
-          )}
-        </div>
+        </label>
       )}
 
       {tab === 'add' && net.testCash && inAsset.cash && session?.walletClient && (
-        <div className="row gap">
-          <button className="btn ghost" disabled={busy || faucetBusy} onClick={takeTestCash}>
-            {faucetBusy ? 'Getting test USDG…' : 'Get 1,000 test USDG'}
+        <div className="faucet">
+          <span className="grow">
+            <b>Need test USDG?</b>
+            <span className="muted sm">Testnet only, no value. Your wallet needs a little testnet ETH for gas.</span>
+          </span>
+          <button className="btn ghost sm" disabled={busy || faucetBusy} onClick={takeTestCash}>
+            {faucetBusy ? 'Getting it…' : 'Get 1,000'}
           </button>
-          <span className="muted sm">Testnet only. Test USDG has no value; your wallet needs a little testnet ETH for gas.</span>
         </div>
       )}
-
-      {tab === 'add' && <p className="hint">This step is public: the explorer shows this wallet adding this amount. What you do after it is not.</p>}
 
       <button className="btn wide" disabled={!canGo} onClick={() => submit(false)}>
         {busy ? STAGES[run?.stage] ?? 'Working…' : label}
@@ -343,13 +357,69 @@ export default function Trade({ net, wallet, session, address, balances, prices,
 
       {needsCombine && (
         <button className="btn ghost wide" disabled={busy} onClick={() => submit(true)}>
-          Combine my {inAsset.symbol} notes first
+          Combine my {inAsset.cash ? 'USDG' : inAsset.symbol} notes first
         </button>
       )}
 
       {run?.stage && <Progress run={run} tab={tab} net={net} />}
       {error && <p className="error">{error}</p>}
     </section>
+  );
+
+  if (isSwap || tabs.includes('buy')) {
+    return (
+      <div className="desk">
+        <section className="card pad markets">
+          <div className="card-head">
+            <h3>Markets</h3>
+            <span className="hint">{net.testPools ? 'Test pools Tint seeded' : 'Uniswap on Robinhood Chain'}</span>
+          </div>
+          <div className="table">
+            {stocks.map((s) => {
+              const p = prices[s.address.toLowerCase()];
+              const mine = held(s);
+              return (
+                <button key={s.address} className={`tr market ${s.address === stockAddr ? 'on' : ''}`} disabled={busy || p == null} onClick={() => setStockAddr(s.address)}>
+                  <Ticker asset={s} />
+                  <span className="grow">
+                    <b>{s.symbol}</b>
+                    <span className="muted sm">{mine > 0n ? `You hold ${amt(mine, s)}` : s.name}</span>
+                  </span>
+                  <Money value={p} className="right" />
+                </button>
+              );
+            })}
+          </div>
+          {net.testPools && <p className="fine">Testnet has Robinhood’s test stock tokens but no real markets, so these are small pools at set prices. Trades move them.</p>}
+        </section>
+        {ticket}
+      </div>
+    );
+  }
+
+  return (
+    <div className="desk">
+      {ticket}
+      <MoveNote tab={tab} relayed={relayed} />
+    </div>
+  );
+}
+
+const MOVE_NOTES = {
+  add: ['This step is public', 'The explorer shows your wallet adding this amount to Tint. That is the one link to you, so add from a wallet you are fine being seen with. What you do after it is not public.'],
+  send: ['Only the two of you know', 'A private send to another Tint address. The explorer sees that a transfer happened, not the amount or who got it.'],
+  out: ['The address you pick is public', 'The explorer shows the receiving address and the amount. Taking out to the wallet you added from links the two again, so use a new address.'],
+};
+
+function MoveNote({ tab, relayed }) {
+  const [title, body] = MOVE_NOTES[tab];
+  return (
+    <aside className="note">
+      <img src="/mascot-cutout.webp" alt="" className="note-mascot" />
+      <h3>{title}</h3>
+      <p className="muted">{body}</p>
+      {tab !== 'add' && <p className="fine">{relayed ? 'The relayer sends it, so your wallet is not the sender.' : 'Without the relayer, your wallet is the sender.'}</p>}
+    </aside>
   );
 }
 

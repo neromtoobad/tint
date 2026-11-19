@@ -12,6 +12,8 @@ import {
 import { assetOf, cashOf, quote, swapFeeBps } from './chain.js';
 import { relayerFee, runAction } from './engine.js';
 import { amt, friendly, parseAmount, short, toNumber, usd } from './format.js';
+import { Money, Ticker } from './parts.jsx';
+import * as I from './icons.jsx';
 
 const FEE_CAP_BPS = 500n; // the most an agent may pay its relayer per trade: 5%
 const EVERY = [
@@ -52,20 +54,31 @@ export default function Agents({ net, wallet, session, prices, relayer, synced, 
   };
 
   return (
-    <section className="card pad agents">
-      <div className="card-head">
-        <h3>Agents</h3>
-        <span className="label mono">Rules checked by a proof</span>
-      </div>
+    <div className="agents">
       {!synced ? (
-        <p className="muted">Reading the pool…</p>
+        <section className="card pad">
+          <p className="muted">Reading the pool…</p>
+        </section>
       ) : (
         <>
           {!agents.length && !creating && (
-            <p className="muted">
-              An agent buys stocks for you on a schedule, from its own private account. You set the rules: which stocks,
-              how much each time, the most per buy, and until when. It can’t buy anything else, and it can’t take money out.
-            </p>
+            <section className="card agents-empty">
+              <div className="squad">
+                <img src="/agent-light.webp" alt="" />
+                <img src="/agent-mid.webp" alt="" />
+                <img src="/agent-dark.webp" alt="" />
+              </div>
+              <div className="agents-empty-text">
+                <h3>No agents yet</h3>
+                <p className="muted">
+                  Pick the stocks, how much each round and how often, the most per buy, and until when. The agent can’t buy anything else and
+                  can’t take money out. A proof checks every trade.
+                </p>
+                <button className="btn" onClick={() => setCreating(true)} disabled={!relayer}>
+                  <I.Plus width={18} height={18} /> New agent
+                </button>
+              </div>
+            </section>
           )}
           {agents.map((m) => (
             <AgentCard key={m.index} memo={m} account={accountOf(m)} net={net} session={session} prices={prices} relayer={relayer} tick={tick} onDone={onDone} />
@@ -85,14 +98,16 @@ export default function Agents({ net, wallet, session, prices, relayer, synced, 
               }}
             />
           ) : (
-            <button className="btn wide" onClick={() => setCreating(true)} disabled={!relayer}>
-              New agent
-            </button>
+            !!agents.length && (
+              <button className="btn ghost add-agent" onClick={() => setCreating(true)} disabled={!relayer}>
+                <I.Plus width={18} height={18} /> New agent
+              </button>
+            )
           )}
-          {!relayer && <p className="fine mono">Agents need the relayer: their rules name the one relayer they may pay. It isn’t answering.</p>}
+          {!relayer && <p className="fine">Agents need the relayer: their rules name the one relayer they may pay. It isn’t answering.</p>}
         </>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -131,6 +146,8 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
         .filter(Boolean)
     : [];
   const total = holdings.reduce((s, h) => s + (h.usd ?? 0), 0);
+  const inStocks = total > 0 ? holdings.filter((h) => !h.a.cash).reduce((s, h) => s + (h.usd ?? 0), 0) / total : 0;
+  const lens = inStocks >= 2 / 3 ? 'dark' : inStocks >= 1 / 3 ? 'mid' : 'light'; // the mascot's lenses show how invested it is
   const trades = (state?.history ?? []).filter((h) => h.type === 'swap').slice(0, 4);
   const status = state?.status;
 
@@ -203,24 +220,26 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
   const ended = status?.ended;
   const empty = state && !holdings.length;
   return (
-    <div className="agent">
+    <section className="card agent">
       <div className="agent-head">
-        <div>
-          <b>{memo.name || `Agent ${memo.index + 1}`}</b>
+        <img src={`/agent-${lens}.webp`} alt="" className="agent-face" title="The darker the lenses, the more of this agent’s account is in stocks" />
+        <div className="grow">
+          <b className="agent-name">{memo.name || `Agent ${memo.index + 1}`}</b>
           <span className="muted sm">
             {usd(Number(plan.amount) / 10 ** cash.decimals)} {everyLabel(plan.every)}, split over {stocks.map((s) => s?.symbol).join(', ')}
           </span>
-        </div>
-        <div className="right">
-          <div className="num agent-total">{state ? usd(total) : '…'}</div>
-          <span className={`chip mono ${ended || empty ? '' : 'live'}`}>
+          <span className={`state ${ended || empty ? '' : 'on'}`}>
             {!status ? '…' : ended ? 'Rules ended' : empty ? 'Empty' : status.due ? 'Round due' : `Next round ${when(status.nextAt - status.now)}`}
           </span>
+        </div>
+        <div className="right agent-value">
+          {state ? <Money value={total} /> : '…'}
+          <span className="muted xs">{state ? `${Math.round(inStocks * 100)}% in stocks` : ''}</span>
         </div>
       </div>
 
       <div className="rules">
-        <span className="label mono">The proof enforces</span>
+        <span className="flabel">The proof enforces</span>
         <ul>
           <li>Buys only {stocks.map((s) => s?.symbol).join(', ')}</li>
           <li>At most {usd(toNumber(rules.maxBuy, cash))} a buy</li>
@@ -234,27 +253,33 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
         <div className="table compact">
           {holdings.map(({ a, v, usd: u }) => (
             <div className="tr" key={a.address}>
-              <span className="ticker mono">{a.symbol}</span>
+              <Ticker asset={a} />
               <span className="grow muted sm num">
                 {amt(v, a)} {a.cash ? 'USDG' : 'shares'}
               </span>
-              <span className="num right">{usd(u)}</span>
+              <Money value={u} className="right" />
             </div>
           ))}
         </div>
       )}
       {!!trades.length && (
         <div className="trades">
-          <span className="label mono">Recent trades</span>
+          <span className="flabel">Recent trades</span>
           {trades.map((t) => {
             const out = assetOf(net, t.assetOut);
             const inA = assetOf(net, t.assetIn);
             return (
-              <div key={t.tx} className="sm row gap-s">
+              <div key={t.tx} className="sm trade-line">
                 <span className="grow">
                   {inA?.cash ? 'Bought' : 'Sold'} {amt(t.amountOut, out)} {out?.symbol} for {amt(t.amountSold, inA)} {inA?.symbol}
                 </span>
-                <span className="mono muted">{short(t.tx)}</span>
+                {net.explorer ? (
+                  <a className="mono muted xs" href={`${net.explorer}/tx/${t.tx}`} target="_blank" rel="noreferrer">
+                    {short(t.tx)}
+                  </a>
+                ) : (
+                  <span className="mono muted xs">{short(t.tx)}</span>
+                )}
               </div>
             );
           })}
@@ -288,7 +313,7 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
       )}
       {line && <p className="sm muted">{line}</p>}
       {error && <p className="error">{error}</p>}
-    </div>
+    </section>
   );
 }
 
@@ -372,9 +397,13 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
   }
 
   return (
-    <div className="agent new">
+    <section className="card pad agent new">
+      <div className="card-head">
+        <h3>New agent</h3>
+        <span className="hint">You can stop it any time and bring everything back</span>
+      </div>
       <div className="field">
-        <span className="label mono">Stocks it may buy</span>
+        <span className="flabel">Stocks it may buy</span>
         <div className="pills">
           {stocks.map((s) => {
             const p = prices[s.address.toLowerCase()];
@@ -389,11 +418,11 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
       </div>
       <div className="form-grid">
         <label className="field">
-          <span className="label mono">Each round spends ($)</span>
+          <span className="flabel">Each round spends ($)</span>
           <input className="input num" inputMode="decimal" value={perRound} onChange={(e) => setPerRound(e.target.value)} disabled={busy} />
         </label>
         <label className="field">
-          <span className="label mono">How often</span>
+          <span className="flabel">How often</span>
           <select className="input" value={every} onChange={(e) => setEvery(Number(e.target.value))} disabled={busy}>
             {(net.localKey ? [...EVERY, [60, 'Every minute (test)']] : EVERY).map(([v, l]) => (
               <option key={v} value={v}>
@@ -403,19 +432,19 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
           </select>
         </label>
         <label className="field">
-          <span className="label mono">Most per buy ($)</span>
+          <span className="flabel">Most per buy ($)</span>
           <input className="input num" inputMode="decimal" value={maxBuy} onChange={(e) => setMaxBuy(e.target.value)} disabled={busy} />
         </label>
         <label className="field">
-          <span className="label mono">Runs for (weeks)</span>
+          <span className="flabel">Runs for (weeks)</span>
           <input className="input num" inputMode="numeric" value={weeks} onChange={(e) => setWeeks(e.target.value)} disabled={busy} />
         </label>
         <label className="field">
-          <span className="label mono">Put in now ($)</span>
+          <span className="flabel">Put in now ($)</span>
           <input className="input num" inputMode="decimal" value={fund} onChange={(e) => setFund(e.target.value)} disabled={busy} />
         </label>
         <label className="field">
-          <span className="label mono">Name (optional)</span>
+          <span className="flabel">Name (optional)</span>
           <input className="input" value={name} placeholder="Weekly tech" onChange={(e) => setName(e.target.value)} disabled={busy} />
         </label>
       </div>
@@ -436,6 +465,6 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
       </div>
       {line && busy && <p className="sm muted">{line}</p>}
       {error && <p className="error">{error}</p>}
-    </div>
+    </section>
   );
 }
