@@ -118,20 +118,50 @@ async function check(call) {
 
 let queue = Promise.resolve(); // one transaction at a time, so nonces never collide
 
+// Nullifiers of transactions this relayer has accepted and not yet seen mined.
+// The same proof (or two proofs spending the same note) sent twice at once would
+// both pass simulation, and the second could be sent and revert at the relayer's
+// cost; refuse it up front instead.
+const inFlight = new Set();
+
+const rejected = (e) => {
+  const name = e.cause?.data?.errorName ?? e.cause?.reason;
+  return httpError(400, name ? `The pool would reject this: ${name}` : `The pool would reject this: ${e.shortMessage ?? e.message}`);
+};
+
 async function relay(call) {
   const args = [call.p, call.ext];
+  const nullifiers = call.p.nullifiers.map(String);
+  if (nullifiers.some((n) => inFlight.has(n))) throw httpError(409, 'These notes are already being spent by a transaction this relayer sent. Wait for it to be mined.');
+  for (const n of nullifiers) inFlight.add(n);
+  const release = () => nullifiers.forEach((n) => inFlight.delete(n));
   try {
-    await client.simulateContract({ account, address: POOL, abi: tintPoolAbi, functionName: call.functionName, args });
+    try {
+      await client.simulateContract({ account, address: POOL, abi: tintPoolAbi, functionName: call.functionName, args });
+    } catch (e) {
+      throw rejected(e);
+    }
+    const send = queue.then(async () => {
+      let gas;
+      try {
+        gas = await client.estimateContractGas({ account, address: POOL, abi: tintPoolAbi, functionName: call.functionName, args });
+      } catch (e) {
+        throw rejected(e); // state changed since the simulation (e.g. the notes were spent)
+      }
+      return wallet.writeContract({ address: POOL, abi: tintPoolAbi, functionName: call.functionName, args, gas: (gas * 12n) / 10n });
+    });
+    queue = send.catch(() => {});
+    const hash = await send;
+    // Hold the nullifiers until the transaction is mined (or clearly isn't coming).
+    client
+      .waitForTransactionReceipt({ hash, timeout: 120_000 })
+      .catch(() => {})
+      .finally(release);
+    return hash;
   } catch (e) {
-    const name = e.cause?.data?.errorName ?? e.cause?.reason;
-    throw httpError(400, name ? `The pool would reject this: ${name}` : `The pool would reject this: ${e.shortMessage ?? e.message}`);
+    release();
+    throw e;
   }
-  const send = queue.then(async () => {
-    const gas = await client.estimateContractGas({ account, address: POOL, abi: tintPoolAbi, functionName: call.functionName, args });
-    return wallet.writeContract({ address: POOL, abi: tintPoolAbi, functionName: call.functionName, args, gas: (gas * 12n) / 10n });
-  });
-  queue = send.catch(() => {});
-  return send;
 }
 
 // ------------------------------------------------------------------ http
