@@ -1,0 +1,21 @@
+# sdk/scripts/e2e-agent-sell.mjs on a local anvil fork of Robinhood Chain mainnet, 2026-11-20T07:48Z
+# real NVDA/USDG Uniswap v3 pools; price moves by public swaps (sdk/scripts/fork-price.mjs); every agent trade is an agent_swap proof sent through the relayer
+add 200 USDG to the private balance
+fund agent #0 with 100 USDG, plan {"amount":"40000000","every":604800,"slippageBps":100,"takeProfitBps":300,"takeProfitSellBps":5000,"stopLossBps":300}: tx 0xed4eb1d778b965a9dfc94f46aea2ca780cfc55d11396885c6d133feba5ad29be
+  runner | 2026-11-20T07:45:19.283Z round due (0 buys so far)
+  runner | 2026-11-20T07:45:25.300Z Bought 274881306799248609 of 0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec for 40000000 (fee 500000) in 0xb15597e9e5dd3a3f27128b5c94ab02e60aca99362353f93f3672c23b9951beaa
+after round 1: 0.274881306799248609 NVDA, 60 USDG; cost of what is held 40, realized 0
+NVDA up 8%: bought NVDA on the 0.05% pool, tx 0xdf53a0051abacb0d732228e8d330d2d5011d20cc06aecf7f6c78c27c5d90cdff
+NVDA up 8%: bought NVDA on the 0.3% pool, tx 0xa2f8a5b3d19f849c1eff8cd0101539c93b0d8e030ce2f6421023f5cd9f38d745
+NVDA up 8%: bought NVDA on the 1% pool, tx 0xc7f1596a3880d5febfdb80a1929d9987e4eae049961e1eb1ba3b99b29c8affa9
+  runner | 2026-11-20T07:47:35.235Z Sold 137440653399624304 of 0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec for 20809296 (take profit, up 5.3%) in 0x40076d63d80afd876de6687c53ff98c1a3c9db6e56063c46e5fa712fb326f8bd
+  runner | 2026-11-20T07:47:35.235Z sold 1; next round in 604670s
+after take profit: 0.137440653399624305 NVDA, 80.809296 USDG; cost of what is held 20.000001, realized 0.809297
+  runner | 2026-11-20T07:47:36.818Z next round in 604666s
+one more check: no sale (the next take profit counts from the last sale price)
+NVDA down 12%: sold NVDA on the 0.05% pool, tx 0xa4a0398612491c23dd351909fd6cb1c199e716fdce87771ad90bdbf8f496bc6e
+NVDA down 12%: sold NVDA on the 0.3% pool, tx 0x0ae8b25e04f5c17e184de1512e3db42b547a45ad4970fd166ad11c6593ac7a10
+NVDA down 12%: sold NVDA on the 1% pool, tx 0xf00a2d4d51b2fa6442371ac2cb69d42df40bbd5a38f9826013a57849208ec461
+  runner | 2026-11-20T07:48:50.920Z Sold 137440653399624305 of 0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec for 18252045 (stop loss, down 8.7%) in 0xfb58d9f1d736fc2db7c0283d054c4b5cc553ea8754f9a70c8daef78ecd735d47
+  runner | 2026-11-20T07:48:50.920Z sold 1; next round in 604594s
+after stop loss: 0 NVDA, 99.061341 USDG; cost of what is held 0, realized -0.938659
