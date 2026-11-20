@@ -215,7 +215,11 @@ export class TintWallet {
       const pub = this.publicByTx.get(tx);
       if (!mine.length && !spentHere.length) continue;
       if (swap) {
-        items.push({ type: 'swap', tx, block: swap.block, assetIn: swap.assetIn, assetOut: swap.assetOut, amountSold: swap.amountSold, amountOut: swap.amountOut });
+        // amountIn: what left your notes (relayer fee and swap fee included); amountSold: what reached Uniswap
+        const inAsset = BigInt(swap.assetIn);
+        const of = (ns) => ns.filter((n) => n.asset === inAsset).reduce((s, n) => s + n.amount, 0n);
+        const amountIn = of(spentHere) - of(mine);
+        items.push({ type: 'swap', tx, block: swap.block, assetIn: swap.assetIn, assetOut: swap.assetOut, amountIn, amountSold: swap.amountSold, amountOut: swap.amountOut });
       } else if (pub && pub.publicIn > 0n) {
         items.push({ type: 'deposit', tx, block: pub.block, asset: toAddr(pub.asset), amount: pub.publicIn });
       } else if (pub && pub.publicOut > pub.fee) {
