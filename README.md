@@ -18,6 +18,7 @@ An **agent account** is a private account that only an agent trades from. You cr
 
 - **Rules, enforced by a zero-knowledge proof** ([circuits/agent_swap](circuits/agent_swap/src/main.nr)): the stocks it may buy (up to five), the most cash per buy, the most it may pay a relayer per trade (5%), the one relayer it may pay, and the date it stops. Everything it buys stays in the account. The rules never go on chain; each trade carries a proof that it follows them, and the pool checks that proof (`agentSwap` in [TintPool.sol](contracts/src/TintPool.sol)).
 - **Plan, in code** ([sdk/src/autoinvest.js](sdk/src/autoinvest.js)): how much each round spends, how often, and the slippage. Each round splits the amount evenly over the picked stocks.
+- **Selling by plan** (`planSales` in [sdk/src/autoinvest.js](sdk/src/autoinvest.js)): an optional take profit (sell half when a stock is up a set percent) and stop loss (sell all when it is down a set percent). "Up" and "down" are measured against what the agent paid, fees included (`positions`, rebuilt from the account's own trades), and against what a sale would really bring back after the pool and the relayer fee. After a take-profit sale, the next one waits for another rise from that sale's price, so one rise sells once. The runner checks sales on every tick, not only when a round is due. An agent can't combine notes, so one sale moves at most its two biggest notes of a stock; a stop loss finishes the rest on the next checks.
 - **The agent can't take money out.** Its key only makes `agent_swap` proofs. Moving money out of the account (`agentTransact`) needs a proof made with your spend key **and** the agent key ([circuits/agent_transact](circuits/agent_transact/src/main.nr)). "Stop and bring back" in the wallet does that.
 - **No server keeps the agent's state.** The agent key is derived from your wallet signature, the rules ride in an encrypted memo on your own note, and the last round is read from the account's history on chain. A fresh browser finds your agents again from chain events.
 
@@ -34,6 +35,14 @@ On the fork, the full loop ran with real proofs and real transactions ([sdk/scri
 4. A second check finds no round due until next week.
 5. The agent key alone is refused when it tries to move money out.
 6. Stopping moves USDG, NVDA and TSLA back to the user's private balance, three `agentTransact` sends through the relayer.
+
+Selling by plan ran on the fork against real price moves ([sdk/scripts/e2e-agent-sell.mjs](sdk/scripts/e2e-agent-sell.mjs), log in [evidence/fork-agent-sell.txt](evidence/fork-agent-sell.txt)). A public trader moved NVDA on every NVDA/USDG Uniswap pool ([sdk/scripts/fork-price.mjs](sdk/scripts/fork-price.mjs)), and the runner reacted each time:
+1. It bought 40 USDG of NVDA.
+2. NVDA went up 8%. The runner sold half: take profit, up 5.3% after every fee.
+3. On the next check, at the same price, it sold nothing.
+4. NVDA went down 12%. The runner sold the rest: stop loss, down 8.7%.
+
+Each sale was an `agentSwap` sent through the relayer. The flat $0.50 relayer fee is large on small sales, which is why the sell check counts it.
 
 **What an agent's rules don't cover:** a holder of the agent key can still make bad trades inside the rules. For example, it can set a loose minimum and lose up to the per-buy cap to price moves or a sandwich on each buy, or trade more often than the plan says. The per-trade cap applies only to buys with cash: a sale (stock to cash, or one listed stock to another) has no size cap and no price floor in the proof, so one bad sale can lose most of what the account holds in that stock. The proof caps what each trade may be, not how good it is. The weekly budget is the plan, not the proof: what the account holds is the most the agent can ever lose.
 
@@ -89,7 +98,6 @@ At Robinhood Chain's 0.02 gwei, 4.5M gas is about 0.00009 ETH per action.
 
 **Not built yet:**
 - AI agents: a model that picks within the rules ("model suggests, code decides, proof enforces"). Today's agent follows a fixed plan.
-- Selling by plan: agents only buy each round; they can sell under the rules, but no plan sells yet.
 - A hosted runner: the runner runs where you start it.
 - Hosting: the web app, relayer and runner run on your machine (pointed at testnet or a fork); no public site yet.
 - Mainnet: Tint is not deployed on Robinhood Chain mainnet.
