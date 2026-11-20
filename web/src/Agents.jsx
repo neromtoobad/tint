@@ -5,8 +5,11 @@ import {
   agentKeyOf,
   encodeAgentKey,
   encodeAgentMemo,
+  planSells,
+  positions,
   roundStatus,
   runRound,
+  runSales,
   TintWallet,
 } from '@tint/sdk';
 import { assetOf, cashOf, quote, swapFeeBps } from './chain.js';
@@ -22,6 +25,20 @@ const EVERY = [
   [3600, 'Every hour'],
 ];
 const DAY = 86400;
+const TAKE_PROFIT = [0, 500, 1000, 2000, 5000]; // bps up from cost
+const STOP_LOSS = [0, 500, 1000, 2000, 3000]; // bps down from cost
+const pctOf = (b) => `${Number(b) / 100}%`;
+
+/** The plan's sell rules in plain words, or [] when it never sells. */
+function sellLines(plan) {
+  const out = [];
+  if (Number(plan.takeProfitBps)) {
+    const share = Number(plan.takeProfitSellBps ?? 5000);
+    out.push(`Sells ${share === 10000 ? 'all' : share === 5000 ? 'half' : pctOf(share)} of a stock when it is up ${pctOf(plan.takeProfitBps)} on what it cost`);
+  }
+  if (Number(plan.stopLossBps)) out.push(`Sells all of a stock when it is down ${pctOf(plan.stopLossBps)} on what it cost`);
+  return out;
+}
 
 const when = (secs) => {
   if (secs <= 0) return 'now';
@@ -129,7 +146,7 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
       await account.sync();
       const now = Math.max(Math.floor(Date.now() / 1000), Number((await net.client.getBlock()).timestamp));
       const status = await roundStatus({ wallet: account, rules, plan, now, blockTime: async (n) => Number((await net.client.getBlock({ blockNumber: n })).timestamp) });
-      if (!stop) setState({ balances: account.balances(), history: account.history(), status: { ...status, now } });
+      if (!stop) setState({ balances: account.balances(), history: account.history(), positions: positions({ wallet: account, rules }), status: { ...status, now } });
     })().catch((e) => !stop && setError(friendly(e)));
     return () => {
       stop = true;
@@ -141,7 +158,9 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
         .map(([addr, v]) => {
           const a = assetOf(net, addr);
           const p = prices[addr];
-          return a && { a, v, usd: p == null ? null : toNumber(v, a) * p };
+          const pos = a && !a.cash ? state.positions.get(BigInt(a.address)) : null;
+          const cost = pos?.shares ? toNumber((pos.cost * v) / pos.shares, cash) : null; // what the held shares cost, fees included
+          return a && { a, v, usd: p == null ? null : toNumber(v, a) * p, cost };
         })
         .filter(Boolean)
     : [];
@@ -156,14 +175,15 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
     [account, session, memo],
   );
 
-  async function roundNow() {
-    setBusy('round');
+  // Runs this round (sales, then buys) or only the sales, here in the tab.
+  async function run(kind) {
+    setBusy(kind);
     setError(null);
     try {
       await account.sync();
       const block = await net.client.getBlock();
       const now = Math.max(Math.floor(Date.now() / 1000), Number(block.timestamp));
-      const made = await runRound({
+      const ctx = {
         wallet: account,
         rules,
         plan,
@@ -177,9 +197,13 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
         relayerFee: (asset) => relayerFee(relayer, asset),
         submit: (action) =>
           runAction({ net, action, relayer, step: (s, d) => setLine(s === 'prove' ? 'Proving the trade follows the rules…' : s === 'relay' ? `Proved in ${(d.proveMs / 1000).toFixed(1)} s. Sending through the relayer…` : s === 'mine' ? 'Waiting for the block…' : null) }),
-        log: (l) => setLine(l.startsWith('Bought') ? null : l),
-      });
-      setLine(made.length ? `Bought ${made.length} stock${made.length === 1 ? '' : 's'} this round.` : null);
+        log: (l) => setLine(/^(Bought|Sold)/.test(l) ? null : l),
+      };
+      const made = kind === 'round' ? await runRound(ctx) : await runSales(ctx);
+      const sold = made.filter((t) => t.why).length;
+      const bought = made.length - sold;
+      const parts = [sold && `sold ${sold} (${[...new Set(made.filter((t) => t.why).map((t) => t.why))].join(', ')})`, bought && `bought ${bought}`].filter(Boolean);
+      setLine(parts.length ? `This ${kind === 'round' ? 'round' : 'check'}: ${parts.join(', ')}.` : kind === 'sales' ? 'Nothing to sell: no stock has reached a sell rule.' : null);
       await onDone();
     } catch (e) {
       setError(friendly(e));
@@ -227,6 +251,7 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
           <b className="agent-name">{memo.name || `Agent ${memo.index + 1}`}</b>
           <span className="muted sm">
             {usd(Number(plan.amount) / 10 ** cash.decimals)} {everyLabel(plan.every)}, split over {stocks.map((s) => s?.symbol).join(', ')}
+            {planSells(plan) ? ' · sells by plan' : ''}
           </span>
           <span className={`state ${ended || empty ? '' : 'on'}`}>
             {!status ? '…' : ended ? 'Rules ended' : empty ? 'Empty' : status.due ? 'Round due' : `Next round ${when(status.nextAt - status.now)}`}
@@ -248,18 +273,35 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
           <li>Everything stays in this account</li>
         </ul>
       </div>
+      {planSells(plan) && (
+        <div className="rules plan">
+          <span className="flabel">The plan (code, checked on every run)</span>
+          <ul>
+            {sellLines(plan).map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!!holdings.length && (
         <div className="table compact">
-          {holdings.map(({ a, v, usd: u }) => (
-            <div className="tr" key={a.address}>
-              <Ticker asset={a} />
-              <span className="grow muted sm num">
-                {amt(v, a)} {a.cash ? 'USDG' : 'shares'}
-              </span>
-              <Money value={u} className="right" />
-            </div>
-          ))}
+          {holdings.map(({ a, v, usd: u, cost }) => {
+            const change = cost && u != null ? (u - cost) / cost : null;
+            return (
+              <div className="tr" key={a.address}>
+                <Ticker asset={a} />
+                <span className="grow muted sm num">
+                  {amt(v, a)} {a.cash ? 'USDG' : 'shares'}
+                  {cost != null && ` · cost ${usd(cost)}`}
+                </span>
+                <span className="right stack">
+                  <Money value={u} />
+                  {change != null && <span className={`xs num ${change >= 0 ? 'gain' : 'loss'}`}>{`${change >= 0 ? '+' : '−'}${Math.abs(change * 100).toFixed(1)}%`}</span>}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
       {!!trades.length && (
@@ -271,7 +313,9 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
             return (
               <div key={t.tx} className="sm trade-line">
                 <span className="grow">
-                  {inA?.cash ? 'Bought' : 'Sold'} {amt(t.amountOut, out)} {out?.symbol} for {amt(t.amountSold, inA)} {inA?.symbol}
+                  {inA?.cash
+                    ? `Bought ${amt(t.amountOut, out)} ${out?.symbol} for ${amt(t.amountIn ?? t.amountSold, inA)} USDG`
+                    : `Sold ${amt(t.amountIn ?? t.amountSold, inA)} ${inA?.symbol} for ${amt(t.amountOut, out)} USDG`}
                 </span>
                 {net.explorer ? (
                   <a className="mono muted xs" href={`${net.explorer}/tx/${t.tx}`} target="_blank" rel="noreferrer">
@@ -287,9 +331,14 @@ function AgentCard({ memo, account, net, session, prices, relayer, tick, onDone 
       )}
 
       <div className="row gap wrap">
-        <button className="btn sm" disabled={!!busy || !relayer || !status?.due || empty} onClick={roundNow} title="Runs this round in this tab: proves each buy here and sends it through the relayer">
+        <button className="btn sm" disabled={!!busy || !relayer || !status?.due || empty} onClick={() => run('round')} title="Runs this round in this tab: proves each trade here and sends it through the relayer">
           {busy === 'round' ? 'Running…' : 'Run this round now'}
         </button>
+        {planSells(plan) && (
+          <button className="btn ghost sm" disabled={!!busy || !relayer || !holdings.some((h) => !h.a.cash)} onClick={() => run('sales')} title="Prices each holding against what it cost and sells if a rule says so">
+            {busy === 'sales' ? 'Checking…' : 'Check sales now'}
+          </button>
+        )}
         <button className="btn ghost sm" disabled={!!busy} onClick={() => setShowKey((v) => !v)}>
           {showKey ? 'Hide agent key' : 'Agent key'}
         </button>
@@ -329,6 +378,8 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
   const [maxBuy, setMaxBuy] = useState('25');
   const [weeks, setWeeks] = useState('12');
   const [fund, setFund] = useState('160');
+  const [takeProfit, setTakeProfit] = useState(2000);
+  const [stopLoss, setStopLoss] = useState(0);
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState(null);
   const [error, setError] = useState(null);
@@ -376,6 +427,8 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
         relayer: relayer.relayer,
       };
       const plan = { amount: amount.toString(), every, slippageBps: 100 };
+      if (takeProfit) Object.assign(plan, { takeProfitBps: takeProfit, takeProfitSellBps: 5000 });
+      if (stopLoss) plan.stopLossBps = stopLoss;
       const label = name.trim() || `${picked.map((a) => assetOf(net, a).symbol).join(' + ')} ${everyLabel(every).replace('every ', '')}`;
       const acct = agentAccountKeys({ agentKey: agentKeyOf(session.keys.spendKey, nextIndex), userOwner: session.keys.owner, rules });
       const f = await relayerFee(relayer, cash.address);
@@ -448,6 +501,35 @@ function NewAgent({ net, wallet, session, relayer, prices, nextIndex, onCancel, 
           <input className="input" value={name} placeholder="Weekly tech" onChange={(e) => setName(e.target.value)} disabled={busy} />
         </label>
       </div>
+      <div className="form-grid">
+        <label className="field">
+          <span className="flabel">Take profit</span>
+          <select className="input" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} disabled={busy}>
+            {TAKE_PROFIT.map((b) => (
+              <option key={b} value={b}>
+                {b ? `Sell half when up ${pctOf(b)}` : 'Never sell for profit'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span className="flabel">Stop loss</span>
+          <select className="input" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} disabled={busy}>
+            {STOP_LOSS.map((b) => (
+              <option key={b} value={b}>
+                {b ? `Sell all when down ${pctOf(b)}` : 'Never sell at a loss'}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {(takeProfit || stopLoss) > 0 && (
+        <p className="sm muted">
+          Measured against what each stock cost the agent, fees included.
+          {takeProfit ? ` After a take-profit sale, the next one waits for another ${pctOf(takeProfit)} rise from that sale.` : ''} This is the
+          plan, in code: the proof caps buys, not sales.
+        </p>
+      )}
       {eachBuy != null && !problem && (
         <p className="sm muted">
           Each round: {picked.length} buy{picked.length === 1 ? '' : 's'} of {usd(toNumber(eachBuy, cash))}, each paying the relayer $0.50. The

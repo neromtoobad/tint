@@ -1105,6 +1105,26 @@ select.input {
   border-radius: 2px;
   background: var(--cobalt);
 }
+.rules.plan {
+  background: transparent;
+  border: 1px dashed var(--line-2);
+}
+.rules.plan li::before {
+  background: transparent;
+  border: 1.5px solid var(--cobalt);
+}
+.tr .stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.gain {
+  color: var(--green);
+}
+.loss {
+  color: var(--red);
+}
 .trades {
   display: flex;
   flex-direction: column;
