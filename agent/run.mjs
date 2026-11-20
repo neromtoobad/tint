@@ -4,13 +4,15 @@
 // Holds one agent key (tintagent1…), reads the agent account from the chain,
 // and when a round is due it buys the picked stocks with the account's cash:
 // it prices each buy on Uniswap, proves it with circuits/agent_swap and sends
-// it through the relayer. The proof is what keeps it inside the rules; this
+// it through the relayer. If the plan sells (take profit / stop loss), every
+// check also looks at each holding against what it cost and sells when the
+// plan says so. The proof is what keeps it inside the rules; this
 // process can't move money out of the account even if it wanted to.
 //
 // It keeps no state: the last round is read from the account's own history.
 import { readFileSync } from 'node:fs';
 import { createPublicClient, defineChain, getAddress, http } from 'viem';
-import { agentAccountKeys, callArgs, decodeAgentKey, initHash, roundStatus, runRound, TintWallet } from '@tint/sdk';
+import { agentAccountKeys, callArgs, decodeAgentKey, initHash, planSells, roundStatus, runRound, runSales, TintWallet } from '@tint/sdk';
 import { proverFor } from '@tint/sdk/node';
 
 const env = process.env;
@@ -94,6 +96,11 @@ const chainNow = async () => Math.max(Math.floor(Date.now() / 1000), Number((awa
 
 log(`agent ${agent.name ?? ''} account ${keys.address.slice(0, 18)}… on chain ${CHAIN_ID}`);
 log(`plan: ${plan.amount} cash every ${plan.every}s over ${rules.assets.slice(1).filter((a) => a).length} stocks, ends ${new Date(Number(rules.endsAt) * 1000).toISOString()}`);
+if (planSells(plan)) {
+  const tp = Number(plan.takeProfitBps ?? 0);
+  const sl = Number(plan.stopLossBps ?? 0);
+  log(`sells: ${tp ? `${(Number(plan.takeProfitSellBps ?? 5000) / 100).toFixed(0)}% of a stock when it is up ${tp / 100}%` : 'no take profit'}; ${sl ? `all of it when it is down ${sl / 100}%` : 'no stop loss'}`);
+}
 
 for (;;) {
   try {
@@ -104,11 +111,13 @@ for (;;) {
       log('The rules have ended. The agent stops; the owner can take everything back.');
       break;
     }
+    const ctx = { wallet, rules, plan, relayer: info.relayer, swapFeeBps, quote, relayerFee, submit, log, now };
     if (status.due) {
       log(`round due (${status.buys} buys so far)`);
-      await runRound({ wallet, rules, plan, relayer: info.relayer, swapFeeBps, quote, relayerFee, submit, log, now });
+      await runRound(ctx);
     } else {
-      log(`next round in ${status.nextAt - now}s`);
+      const sold = planSells(plan) ? await runSales(ctx) : [];
+      log(`${sold.length ? `sold ${sold.length}; ` : ''}next round in ${status.nextAt - now}s`);
     }
   } catch (e) {
     log(`error: ${e.shortMessage ?? e.message}`);
