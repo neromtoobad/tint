@@ -1,5 +1,5 @@
 // Networks, listed stocks and prices.
-import { createPublicClient, defineChain, http, parseUnits } from 'viem';
+import { createPublicClient, defineChain, http, parseAbiItem, parseUnits } from 'viem';
 import { tintPoolAbi } from '@tint/sdk';
 
 const deployments = Object.fromEntries(
@@ -84,6 +84,7 @@ export const networks = Object.values(NETWORKS)
       assets: n.assets ?? fromDeployment(d),
       explorer: n.explorer ?? d.explorer ?? null,
       quoter: n.quoter ?? d.quoter,
+      factory: d.uniswapFactory ?? null,
       // testnet only: the cash token has an open faucet (TestUSDG.faucet)
       // a local anvil fork of testnet (FORK=1 tools/testnet-deploy.sh) gets the same public dev key as the mainnet fork
       localKey: n.localKey ?? (/127\.0\.0\.1|localhost/.test(d.rpc ?? '') ? NETWORKS[31337].localKey : undefined),
@@ -163,4 +164,42 @@ export async function priceOf(net, asset) {
   const q = await quote(net, asset.address, cash.address, parseUnits('0.01', asset.decimals));
   if (!q) return null;
   return (Number(q.amountOut) / 10 ** cash.decimals) * 100;
+}
+
+const factoryAbi = [{ type: 'function', name: 'getPool', stateMutability: 'view', inputs: [{ type: 'address' }, { type: 'address' }, { type: 'uint24' }], outputs: [{ type: 'address' }] }];
+const swapEvent = parseAbiItem('event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)');
+const LOOKBACK = [2_000_000n, 200_000n]; // blocks of Uniswap history to read; busy pools only answer the shorter range
+
+/**
+ * A stock's real trade history on Uniswap: the price after every swap in its
+ * USDG pools, oldest first. [{ block, price }] (dollars per share).
+ */
+export async function priceHistory(net, asset) {
+  const cash = cashOf(net);
+  if (!net.factory || asset.cash) return [];
+  const latest = await net.client.getBlockNumber();
+  const pools = (
+    await Promise.all(FEE_TIERS.map((fee) => net.client.readContract({ address: net.factory, abi: factoryAbi, functionName: 'getPool', args: [cash.address, asset.address, fee] }).catch(() => null)))
+  ).filter((p) => p && BigInt(p) !== 0n);
+  const stockIs0 = BigInt(asset.address) < BigInt(cash.address);
+  const scale = 10 ** (stockIs0 ? asset.decimals - cash.decimals : cash.decimals - asset.decimals);
+  const read = async (address) => {
+    for (const span of LOOKBACK) {
+      try {
+        return await net.client.getLogs({ address, event: swapEvent, fromBlock: latest > span ? latest - span : 0n, toBlock: latest });
+      } catch {
+        // too many results for this range: try a shorter one
+      }
+    }
+    return [];
+  };
+  const logs = (await Promise.all(pools.map(read))).flat();
+  return logs
+    .map((l) => {
+      const r = Number(l.args.sqrtPriceX96) / 2 ** 96;
+      const p = r * r * scale; // token1 per token0
+      return { block: l.blockNumber, index: l.logIndex, price: stockIs0 ? p : 1 / p };
+    })
+    .filter((x) => Number.isFinite(x.price) && x.price > 0)
+    .sort((a, b) => (a.block === b.block ? a.index - b.index : a.block < b.block ? -1 : 1));
 }
