@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tint UI directions</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@400;500&family=Onest:wght@300..700&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #777; padding: 40px; display: flex; flex-direction: column; gap: 40px; -webkit-font-smoothing: antialiased; }
+  .frame { width: 1440px; height: 900px; overflow: hidden; position: relative; }
+  .num { font-variant-numeric: tabular-nums; }
+  .cents { opacity: .38; }
+  .mono { font-family: 'DM Mono', monospace; }
+  .disc { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 500 9.5px 'DM Mono', monospace; letter-spacing: -.02em; color: #fff; flex: none; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .row { display: flex; align-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .dots { letter-spacing: .2em; opacity: .55; }
+  .pill { border-radius: 999px; }
+  .label { font: 500 11px 'DM Mono', monospace; letter-spacing: .02em; color: var(--muted); }
+  svg { display: block; }
+
+  /* ---------------------------------------------------------- A · Night desk */
+  .A { --bg: #070a18; --panel: #0d1226; --panel-2: #121a36; --line: rgba(157,180,255,.10); --text: #eef1fb; --muted: #8790b0; --accent: #9db4ff; --up: #6fd3a0; --down: #ff8a7a;
+       background: radial-gradient(1200px 600px at 70% -10%, #1b2a6b 0%, rgba(27,42,107,0) 60%), var(--bg); color: var(--text); font-family: 'Bricolage Grotesque', sans-serif; }
+  .B { --bg: #f3efe9; --panel: #ffffff; --panel-2: #f7f5f1; --line: #e4dfd5; --text: #121318; --muted: #77746c; --accent: #1b2a6b; --up: #23804f; --down: #b8382f;
+       background: var(--bg); color: var(--text); font-family: 'Bricolage Grotesque', sans-serif; }
+  .C { --bg: #f5f5f3; --panel: #ffffff; --panel-2: #f0f0ed; --line: #e6e6e1; --text: #0f1014; --muted: #7a7b80; --accent: #1b2a6b; --up: #1f8a55; --down: #c2412f;
+       background: var(--bg); color: var(--text); font-family: 'Onest', sans-serif; }
+  .C .dark { --panel: #10173a; --panel-2: #16204b; --line: rgba(157,180,255,.14); --text: #eef1fb; --muted: #8e98c0; --up: #74dba8; --down: #ff9584; color: var(--text); }
+
+  /* nav */
+  .nav { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: 1240px; height: 60px; display: flex; align-items: center; padding: 0 12px 0 24px; }
+  .A .nav { background: rgba(13,18,38,.72); border: 1px solid var(--line); border-radius: 999px; backdrop-filter: blur(12px); }
+  .B .nav { background: #fff; border: 1px solid var(--line); border-radius: 999px; }
+  .C .nav { background: transparent; }
+  .nav img { height: 24px; }
+  .nav .links { display: flex; gap: 34px; margin: 0 auto; font-size: 14.5px; color: var(--muted); }
+  .nav .cta { height: 40px; padding: 0 20px; display: grid; place-items: center; font-size: 14px; font-weight: 500; border-radius: 999px; }
+  .A .nav .cta { background: #eef1fb; color: #0b1230; }
+  .B .nav .cta, .C .nav .cta { background: #121318; color: #fff; }
+
+  /* hero */
+  .hero { position: absolute; top: 140px; left: 100px; width: 820px; }
+  .eyebrow { display: inline-flex; gap: 8px; align-items: center; font: 500 12px 'DM Mono', monospace; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; }
+  .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--up); }
+  .hero h1 { margin-top: 22px; font-weight: 300; font-size: 76px; line-height: .98; letter-spacing: -.045em; font-variation-settings: 'opsz' 96; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .A .hero h1 em { color: var(--accent); }
+  .hero p { margin-top: 22px; font-size: 18px; line-height: 1.5; color: var(--muted); width: 560px; font-weight: 400; }
+  .hero .ctas { margin-top: 30px; display: flex; gap: 12px; align-items: center; }
+  .btn { height: 48px; padding: 0 26px; display: inline-grid; place-items: center; font-size: 15px; font-weight: 500; border-radius: 999px; }
+  .A .btn.primary { background: #eef1fb; color: #0b1230; }
+  .B .btn.primary, .C .btn.primary { background: #121318; color: #fff; }
+  .btn.ghost { color: var(--text); }
+  .A .btn.ghost, .B .btn.ghost, .C .btn.ghost { border: 1px solid var(--line); }
+
+  /* preview window (landing) */
+  .preview { position: absolute; left: 100px; right: 100px; top: 560px; height: 520px; border-radius: 22px; padding: 10px; display: grid; grid-template-columns: 250px 1fr 330px; gap: 10px; }
+  .A .preview { background: rgba(13,18,38,.8); border: 1px solid var(--line); box-shadow: 0 40px 120px -40px rgba(27,42,107,.9); }
+  .B .preview { background: #ebe6dd; border: 1px solid var(--line); }
+  .panel { background: var(--panel); border-radius: 14px; padding: 16px; border: 1px solid var(--line); overflow: hidden; }
+  .A .panel { border-color: transparent; }
+  .demo-tag { position: absolute; right: 118px; top: 528px; font: 500 11px 'DM Mono', monospace; color: var(--muted); }
+
+  .mkt .item { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 10px; }
+  .mkt .item.on { background: var(--panel-2); }
+  .mkt .item b { font-size: 14px; font-weight: 500; }
+  .mkt .item small { display: block; font-size: 11.5px; color: var(--muted); }
+  .mkt .px { text-align: right; font: 400 13px 'DM Mono', monospace; }
+  .mkt .px small { font-size: 11px; }
+
+  .chart-head { display: flex; align-items: baseline; gap: 14px; }
+  .big { font-weight: 300; font-size: 44px; letter-spacing: -.04em; line-height: 1; }
+  .tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel-2); font: 500 12px 'DM Mono', monospace; color: var(--muted); }
+  .tabs span { padding: 5px 11px; border-radius: 999px; }
+  .tabs span.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .A .tabs span.on { background: #24305e; }
+
+  .agent-card .face { width: 46px; height: 46px; border-radius: 12px; background: var(--panel-2); object-fit: cover; }
+  .kv { display: flex; justify-content: space-between; font-size: 13.5px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+  .kv span:first-child { color: var(--muted); }
+  .seen { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .seen:last-child { border-bottom: 0; }
+  .chip { font: 500 11px 'DM Mono', monospace; padding: 3px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+  .chip.ok { color: var(--up); }
+  .bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+
+  /* ---------------------------------------------------------- app frame */
+  .top { height: 64px; display: flex; align-items: center; padding: 0 28px; gap: 28px; border-bottom: 1px solid var(--line); }
+  .A .top { background: rgba(7,10,24,.6); }
+  .B .top, .C .top { background: var(--panel); }
+  .top img { height: 22px; }
+  .top .tabs-nav { display: flex; gap: 4px; font-size: 14px; color: var(--muted); }
+  .top .tabs-nav span { padding: 8px 14px; border-radius: 999px; }
+  .top .tabs-nav span.on { color: var(--text); background: var(--panel-2); }
+  .A .top .tabs-nav span.on { background: #16204b; }
+  .top .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .netchip { font: 500 12px 'DM Mono', monospace; color: var(--muted); padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; display: flex; gap: 8px; align-items: center; }
+  .netchip i { width: 6px; height: 6px; border-radius: 50%; background: var(--up); }
+  .grid { position: absolute; top: 64px; left: 0; right: 0; bottom: 36px; padding: 16px; display: grid; grid-template-columns: 280px 1fr 360px; gap: 16px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .status { position: absolute; bottom: 0; left: 0; right: 0; height: 36px; display: flex; gap: 26px; align-items: center; padding: 0 28px; font: 400 11.5px 'DM Mono', monospace; color: var(--muted); border-top: 1px solid var(--line); }
+  h3 { font-size: 14px; font-weight: 500; letter-spacing: -.01em; }
+  .card-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .hold { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .hold:last-child { border-bottom: 0; }
+  .hold small { display: block; color: var(--muted); font-size: 11.5px; }
+  .hold .r { text-align: right; font-family: 'DM Mono', monospace; font-size: 13px; }
+  .act { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .act:last-child { border-bottom: 0; }
+  .act .ic { width: 22px; height: 22px; border-radius: 7px; background: var(--panel-2); display: grid; place-items: center; font: 500 11px 'DM Mono', monospace; color: var(--muted); }
+  .act .t { font: 400 11.5px 'DM Mono', monospace; color: var(--muted); }
+  .balance-hero { padding: 22px 22px 14px; }
+  .A .balance-hero { background: linear-gradient(160deg, #16204b, #0d1226 70%); }
+  .actions { display: flex; gap: 8px; margin-top: 16px; }
+  .actions span { height: 36px; padding: 0 16px; display: grid; place-items: center; border-radius: 999px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--line); }
+  .actions span.p { border: 0; }
+  .A .actions span.p { background: #eef1fb; color: #0b1230; }
+  .B .actions span.p, .C .actions span.p { background: #121318; color: #fff; }
+  .C .dark .actions span.p { background: #fff; color: #0b1230; }
+  .C .dark .actions span { border-color: rgba(255,255,255,.16); }
+  .sm-btn { height: 34px; padding: 0 14px; display: inline-grid; place-items: center; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid var(--line); }
+  .sm-btn.p { border: 0; }
+  .A .sm-btn.p { background: #eef1fb; color: #0b1230; }
+  .B .sm-btn.p, .C .sm-btn.p { background: #121318; color: #fff; }
+
+  /* C landing: centred, dark product card */
+  .C .hero { left: 0; right: 0; width: auto; text-align: center; top: 128px; }
+  .C .hero h1 { font-size: 72px; font-weight: 400; letter-spacing: -.045em; width: 900px; margin: 22px auto 0; }
+  .C .hero p { margin: 20px auto 0; }
+  .C .hero .ctas { justify-content: center; }
+  .C .preview { top: 520px; background: #0b1230; border: 0; box-shadow: 0 50px 120px -50px rgba(11,18,48,.8); --panel: #121a3f; --panel-2: #1a2450; --line: rgba(157,180,255,.12); --text: #eef1fb; --muted: #8e98c0; --up: #74dba8; --down: #ff9584; color: var(--text); }
+  .C .preview .panel { border-color: transparent; }
+  .C .preview .tabs span.on { background: #24305e; }
+  .C .demo-tag { top: 492px; }
+  .C .glow { position: absolute; left: 50%; top: 480px; width: 1000px; height: 500px; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(157,180,255,.55), rgba(157,180,255,0)); filter: blur(20px); }
+  .C .mascot { position: absolute; right: 70px; top: 300px; width: 230px; transform: rotate(6deg); filter: drop-shadow(0 30px 40px rgba(11,18,48,.25)); }
+  .C .top .tabs-nav span.on { background: #121318; color: #fff; }
+  .C .side-rail { }
+</style>
+</head>
+<body>
+<script>
+const S = [
+  { s: 'TSLA', n: 'Tesla', p: 382.10, c: 2.41, col: '#3b4a8a' },
+  { s: 'PLTR', n: 'Palantir', p: 180.40, c: 4.12, col: '#2c2f3a' },
+  { s: 'AMD', n: 'AMD', p: 240.12, c: 1.96, col: '#1f6a5a' },
+  { s: 'AMZN', n: 'Amazon', p: 266.35, c: -0.84, col: '#8a5a1e' },
+  { s: 'NFLX', n: 'Netflix', p: 110.25, c: -1.10, col: '#8f2b2b' },
+];
+const money = (v) => { const [w, c] = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split('.'); return `$${w}<span class="cents">.${c}</span>`; };
+const pct = (c) => `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(2)}%</span>`;
+const disc = (x) => `<span class="disc" style="background:${x.col}">${x.s}</span>`;
+
+// deterministic price path
+function series(n, seed, drift) { let v = 100, out = []; let s = seed; for (let i = 0; i < n; i++) { s = (s * 9301 + 49297) % 233280; v += (s / 233280 - 0.48 + drift) * 2.2; out.push(v); } return out; }
+function chart(w, h, data, color, fill) {
+  const min = Math.min(...data), max = Math.max(...data);
+  const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - ((v - min) / (max - min)) * (h - 16) - 8]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const buys = [12, 26, 40, 54, 68].map((i) => pts[Math.min(i, pts.length - 1)]);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs><linearGradient id="g${color.slice(1)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="${fill}"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${[0.25, 0.5, 0.75].map((f) => `<line x1="0" x2="${w}" y1="${h * f}" y2="${h * f}" stroke="currentColor" stroke-opacity=".07"/>`).join('')}
+    <path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#g${color.slice(1)})"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
+    ${buys.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--panel)" stroke="${color}" stroke-width="1.6"/>`).join('')}
+  </svg>`;
+}
+
+const markets = (on = 0) => `<div class="panel mkt">
+  <div class="card-h"><h3>Markets</h3><span class="label">Uniswap</span></div>
+  ${S.map((x, i) => `<div class="item ${i === on ? 'on' : ''}">${disc(x)}<div class="grow"><b>${x.s}</b><small>${x.n}</small></div><div class="px num">${x.p.toFixed(2)}<small style="display:block">${pct(x.c)}</small></div></div>`).join('')}
+</div>`;
+
+const agentPanel = (img) => `<div class="panel agent-card">
+  <div class="row" style="gap:12px"><img class="face" src="${img}"/><div class="grow"><b style="font-size:15px;font-weight:500">Weekly tech</b><div class="label" style="margin-top:3px">Agent · next buy in 2d 4h</div></div><span class="chip ok">Running</span></div>
+  <div style="margin-top:14px" class="label">The proof enforces</div>
+  <div class="kv"><span>Stocks</span><span>TSLA · PLTR · AMD</span></div>
+  <div class="kv"><span>Most per trade</span><span class="num">$50.00</span></div>
+  <div class="kv"><span>Ends</span><span>Mar 1, 2027</span></div>
+  <div style="margin-top:12px" class="label">The plan</div>
+  <div class="kv"><span>Every week</span><span class="num">$40.00</span></div>
+  <div class="kv"><span>Take profit</span><span>+20%, sells half</span></div>
+  <div class="kv"><span>Stop loss</span><span>−10%, sells all</span></div>
+</div>`;
+
+const explorer = `<div class="panel">
+  <div class="card-h"><h3>What the explorer sees</h3></div>
+  <div class="seen"><span>Your balance</span><span class="dots">••••••</span></div>
+  <div class="seen"><span>What you hold</span><span class="dots">••••••</span></div>
+  <div class="seen"><span>Who you paid</span><span class="dots">••••••</span></div>
+  <div class="seen"><span>Who sent the trade</span><span class="label">The relayer</span></div>
+</div>`;
+
+function landing(cls, logo, img, opts = {}) {
+  const lineColor = cls === 'A' ? '#9db4ff' : cls === 'C' ? '#9db4ff' : '#1b2a6b';
+  return `<div class="frame ${cls}" data-out="${cls}-landing">
+  ${opts.glow ? '<div class="glow"></div>' : ''}
+  <div class="nav"><img src="${logo}"/><div class="links"><span>Agents</span><span>Markets</span><span>Privacy</span><span>Docs</span></div><span class="cta">Open app</span></div>
+  <div class="hero">
+    <span class="eyebrow"><i></i>Live on Robinhood Chain testnet</span>
+    <h1>A private agent that<br/><em>buys stocks for you.</em></h1>
+    <p>Set the rules once. Tint’s agent trades tokenized stocks on Robinhood Chain from an account only you can read. Nobody sees what you hold.</p>
+    <div class="ctas"><span class="btn primary">Open app</span><span class="btn ghost">How it works</span></div>
+  </div>
+  ${opts.mascot ? `<img class="mascot" src="../../web/public/mascot-cutout.webp"/>` : ''}
+  <span class="demo-tag">Example data</span>
+  <div class="preview">
+    ${markets(0)}
+    <div class="panel">
+      <div class="row" style="gap:12px">${disc(S[0])}<b style="font-size:16px;font-weight:500">TSLA</b><span class="tabs"><span class="on">Buy</span><span>Sell</span></span><span class="grow"></span><span class="tabs"><span>1D</span><span class="on">1W</span><span>1M</span><span>All</span></span></div>
+      <div class="chart-head" style="margin-top:16px"><span class="big num">382.10</span>${pct(2.41)}<span class="label">· dots are your agent’s buys</span></div>
+      <div style="margin-top:14px">${chart(560, 250, series(80, 7, 0.05), lineColor, cls === 'B' ? 0.12 : 0.28)}</div>
+    </div>
+    <div class="col" style="gap:10px">${agentPanel(img)}</div>
+  </div>
+</div>`;
+}
+
+function app(cls, logo, img) {
+  const lineColor = cls === 'B' ? '#1b2a6b' : '#9db4ff';
+  const dark = cls === 'C' ? 'dark' : '';
+  return `<div class="frame ${cls}" data-out="${cls}-app">
+  <div class="top"><img src="${logo}"/><div class="tabs-nav"><span class="on">Portfolio</span><span>Trade</span><span>Agents</span><span>Move money</span><span>Privacy</span></div>
+    <div class="right"><span class="netchip"><i></i>RH testnet · #4,218,903</span><span class="netchip">0x8215…6cd6</span></div></div>
+  <div class="grid">
+    <div class="col">${markets(-1)}
+      <div class="panel" style="flex:1">
+        <div class="card-h"><h3>Holdings</h3><span class="label">Cost → now</span></div>
+        ${[[S[0], '0.2094', 80.01, 4.6], [S[1], '0.4106', 74.06, 2.6], [S[2], '0.1650', 39.62, -1.2], [{ s: 'USDG', n: 'Cash', col: '#5b6170' }, '', 1054.81, null]].map(([x, sh, v, g]) => `<div class="hold">${disc(x)}<div class="grow"><b style="font-weight:500">${x.s}</b><small>${sh ? sh + ' shares' : 'Ready to invest'}</small></div><div class="r">${money(v)}${g == null ? '' : `<small>${pct(g)}</small>`}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel balance-hero ${dark}" ${cls === 'C' ? 'style="background:radial-gradient(600px 300px at 80% 0%, #2a3d8f, #10173a 70%)"' : ''}>
+        <div class="row"><span class="label">Private balance</span><span class="grow"></span><span class="chip">Only you can read this</span></div>
+        <div class="row" style="margin-top:12px;gap:14px;align-items:baseline"><span class="num" style="font-size:56px;font-weight:300;letter-spacing:-.045em;line-height:1">${money(1248.5)}</span>${pct(1.82)}<span class="label">this week</span></div>
+        <div style="margin-top:10px;color:${cls === 'C' ? '#9db4ff' : 'inherit'}">${chart(700, 190, series(90, 3, 0.07), lineColor, cls === 'B' ? 0.1 : 0.3)}</div>
+        <div class="actions"><span class="p">Buy a stock</span><span>Add money</span><span>Send</span><span>New agent</span></div>
+      </div>
+      <div class="panel" style="flex:1">
+        <div class="card-h"><h3>Activity</h3><span class="label">Only you see this list</span></div>
+        ${[['B', 'Agent bought TSLA', '0.1047 for $40.00', 'Tue 09:14'], ['B', 'Agent bought PLTR', '0.2210 for $40.00', 'Tue 09:14'], ['S', 'Agent sold AMD · take profit', '0.0820 for $21.40', 'Mon 17:02'], ['+', 'Added USDG', '$1,000.00', 'Sun 11:40']].map(([i, t, d, w]) => `<div class="act"><span class="ic">${i}</span><span>${t}</span><span class="mono" style="font-size:12.5px;color:var(--muted)">${d}</span><span class="t">${w}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="col">${agentPanel(img)}
+      <div class="panel"><div class="card-h"><h3>Weekly tech · this round</h3><span class="label">2 of 3 bought</span></div><div class="bar"><i style="width:66%"></i></div>
+        <div class="row" style="gap:8px;margin-top:14px"><span class="sm-btn p">Run this round now</span><span class="sm-btn">Check sales</span><span class="sm-btn">Stop</span></div></div>
+      ${explorer}
+    </div>
+  </div>
+  <div class="status"><span>● Robinhood Chain testnet</span><span>Relayer on</span><span>Proofs are made in this browser. Keys never leave it.</span><span style="margin-left:auto">Pool contract ↗</span></div>
+</div>`;
+}
+
+const ink = '../../web/public/tint-lockup-ink.svg', cream = '../../web/public/tint-lockup-cream.svg';
+document.body.innerHTML = [
+  landing('A', cream, '../../web/public/agent-dark.webp'), app('A', cream, '../../web/public/agent-dark.webp'),
+  landing('B', ink, '../../web/public/agent-mid.webp'), app('B', ink, '../../web/public/agent-mid.webp'),
+  landing('C', ink, '../../web/public/agent-mid.webp', { glow: true, mascot: true }), app('C', ink, '../../web/public/agent-mid.webp'),
+].join('');
+</script>
+</body>
+</html>
