@@ -8,7 +8,7 @@ import { short } from './format.js';
 import Connect from './Connect.jsx';
 import Trade from './Trade.jsx';
 import Agents from './Agents.jsx';
-import { Activity, BalanceCard, Explorer, Holdings, Keys, Visibility } from './parts.jsx';
+import { Desk, Keys, Visibility } from './parts.jsx';
 import * as I from './icons.jsx';
 
 const ready = initHash();
@@ -128,7 +128,7 @@ export default function App() {
 
   if (!net) {
     return (
-      <div className="lock-page">
+      <div className="lock-page center">
         <div className="card pad">
           <h2>No Tint pool found</h2>
           <p className="muted">Deploy one first (tools/dev-fork.sh), then restart this page.</p>
@@ -138,16 +138,7 @@ export default function App() {
   }
 
   if (!session) {
-    return (
-      <div className="lock-page">
-        <header className="lock-top">
-          <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
-          <NetChip net={net} />
-        </header>
-        <Connect net={net} onUnlock={unlock} />
-        <StatusLine net={net} relayer={relayer} block={null} />
-      </div>
-    );
+    return <Connect net={net} prices={prices} relayer={relayer} onUnlock={unlock} status={<StatusLine net={net} relayer={relayer} block={null} />} />;
   }
 
   const pages = PAGES.filter((p) => !session.viewOnly || p.viewOnly);
@@ -161,81 +152,63 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="side">
-        <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
-        <NetChip net={net} />
-        <nav className="nav">
-          {pages.map(({ key, label, Icon }) => (
+      <header className="top">
+        <img src="/tint-lockup-cream.svg" alt="Tint" className="logo" />
+        <nav className="tabs-nav">
+          {pages.map(({ key, label }) => (
             <button key={key} className={current === key ? 'on' : ''} onClick={() => go(key)}>
-              <Icon /> {label}
+              {label}
             </button>
           ))}
         </nav>
-        <div className="side-foot">
-          <div className="who">
-            <span className="who-label">{session.viewOnly ? 'Viewing key' : session.label}</span>
-            <span className="mono who-addr">{session.viewOnly ? 'Read only' : short(address)}</span>
-          </div>
+        <div className="top-right">
+          <NetChip net={net} block={block} />
+          <span className="who mono" title={session.label}>
+            {session.viewOnly ? 'Viewing key · read only' : short(address)}
+          </span>
           <button className="icon-btn" onClick={lock} title="Lock">
-            <I.Lock />
+            <I.Lock width={18} height={18} />
           </button>
         </div>
-      </aside>
+      </header>
 
-      <div className="main">
-        <header className="m-top">
-          <img src="/tint-lockup-ink.svg" alt="Tint" className="logo" />
-          <div className="row gap-s">
-            <NetChip net={net} />
-            <button className="icon-btn" onClick={lock} title="Lock">
-              <I.Lock />
-            </button>
+      {current === 'home' && (
+        <main className="page wide">
+          <Desk {...props} history={history} syncError={syncError} onGo={session.viewOnly ? null : go} />
+        </main>
+      )}
+      {current === 'trade' && (
+        <Page title="Trade" sub="Buy and sell stock tokens from your private balance. The relayer sends the trade, so it doesn’t point back to you." wide>
+          <Trade key={`trade-${tab}`} {...props} tabs={['buy', 'sell']} initialTab={tab ?? 'buy'} />
+        </Page>
+      )}
+      {current === 'move' && (
+        <Page title="Move money" sub="Add USDG or stocks, send to another Tint user, or take money out.">
+          <Trade key={`move-${tab}`} {...props} tabs={['add', 'send', 'out']} initialTab={tab ?? 'add'} />
+        </Page>
+      )}
+      {current === 'agents' && (
+        <Page title="Agents" sub="An agent buys stocks for you on a schedule, from its own private account, inside rules a proof enforces.">
+          <Agents {...props} />
+        </Page>
+      )}
+      {current === 'privacy' && (
+        <Page title="Privacy and keys" sub="What anyone watching the chain can see, and the keys that let you share your history.">
+          <div className="two">
+            <Visibility relayer={relayer} />
+            {session.viewOnly ? (
+              <section className="card pad">
+                <h3>Read only</h3>
+                <p className="muted">This is a viewing key. It shows the balance and history, and can’t move anything.</p>
+              </section>
+            ) : (
+              <Keys keys={session.keys} />
+            )}
           </div>
-        </header>
+        </Page>
+      )}
 
-        {current === 'home' && (
-          <Page title="Portfolio" sub={session.viewOnly ? 'Read only, through a viewing key.' : 'Your private balance. Only you can read it.'}>
-            <BalanceCard net={net} balances={balances} prices={prices} synced={synced} error={syncError} viewOnly={session.viewOnly} onGo={go} />
-            <div className="two">
-              <Holdings net={net} balances={balances} prices={prices} synced={synced} />
-              <Explorer relayer={relayer} onGo={session.viewOnly ? null : go} />
-            </div>
-            <Activity net={net} history={history} synced={synced} />
-          </Page>
-        )}
-        {current === 'trade' && (
-          <Page title="Trade" sub="Buy and sell stock tokens from your private balance. The relayer sends the trade, so it doesn't point back to you.">
-            <Trade key={`trade-${tab}`} {...props} tabs={['buy', 'sell']} initialTab={tab ?? 'buy'} />
-          </Page>
-        )}
-        {current === 'move' && (
-          <Page title="Move money" sub="Add USDG or stocks, send to another Tint user, or take money out.">
-            <Trade key={`move-${tab}`} {...props} tabs={['add', 'send', 'out']} initialTab={tab ?? 'add'} />
-          </Page>
-        )}
-        {current === 'agents' && (
-          <Page title="Agents" sub="An agent buys stocks for you on a schedule, from its own private account, inside rules a proof enforces.">
-            <Agents {...props} />
-          </Page>
-        )}
-        {current === 'privacy' && (
-          <Page title="Privacy and keys" sub="What anyone watching the chain can see, and the keys that let you share your history.">
-            <div className="two">
-              <Visibility relayer={relayer} />
-              {session.viewOnly ? (
-                <section className="card pad">
-                  <h3>Read only</h3>
-                  <p className="muted">This is a viewing key. It shows the balance and history, and can’t move anything.</p>
-                </section>
-              ) : (
-                <Keys keys={session.keys} />
-              )}
-            </div>
-          </Page>
-        )}
-
-        <StatusLine net={net} relayer={relayer} block={block} />
-      </div>
+      <StatusLine net={net} relayer={relayer} block={block} />
 
       <nav className="tabbar">
         {pages.map(({ key, short: label, Icon }) => (
@@ -257,9 +230,9 @@ const PAGES = [
   { key: 'privacy', label: 'Privacy and keys', short: 'Privacy', Icon: I.EyeOff, viewOnly: true },
 ];
 
-function Page({ title, sub, children }) {
+function Page({ title, sub, wide, children }) {
   return (
-    <main className="page">
+    <main className={`page ${wide ? 'wide' : ''}`}>
       <div className="page-head">
         <h1>{title}</h1>
         {sub && <p>{sub}</p>}
@@ -275,7 +248,7 @@ function NetChip({ net, block }) {
       <i className="dot live" />
       <span className="net-long">{net.label}</span>
       <span className="net-short">{net.short}</span>
-      {block != null && <span className="mono muted">#{block.toLocaleString('en-US')}</span>}
+      {block != null && <span className="net-block">#{block.toLocaleString('en-US')}</span>}
     </span>
   );
 }

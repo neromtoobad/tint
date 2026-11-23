@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { encodeAddress, exportViewingKey } from '@tint/sdk';
-import { assetOf } from './chain.js';
+import { assetOf, cashOf } from './chain.js';
 import { amt, short, toNumber, usd } from './format.js';
+import { LineChart, balanceSeries } from './chart.jsx';
 import * as I from './icons.jsx';
 
 function rows(net, balances, prices) {
@@ -27,17 +28,18 @@ export function Money({ value, className = '' }) {
   );
 }
 
-export function BalanceCard({ net, balances, prices, synced, error, viewOnly, onGo }) {
+export function BalanceCard({ net, balances, prices, synced, error, viewOnly, onGo, history }) {
   const list = rows(net, balances, prices);
   const total = list.reduce((s, r) => s + (r.usd ?? 0), 0);
   const unpriced = list.some((r) => r.usd == null);
   const stocks = list.filter((r) => !r.asset.cash).length;
+  const series = synced ? balanceSeries(net, history ?? [], balances, prices) : null;
   return (
     <section className="lens">
       <div className="lens-head">
-        <span>Private balance</span>
+        <span className="label">Private balance</span>
         <span className="badge">
-          <I.EyeOff width={14} height={14} /> Only you
+          <I.EyeOff width={13} height={13} /> Only you can read this
         </span>
       </div>
       <div className="lens-total">{synced ? <Money value={total} /> : <span className="reading">Reading the pool…</span>}</div>
@@ -48,19 +50,27 @@ export function BalanceCard({ net, balances, prices, synced, error, viewOnly, on
         {unpriced && ' · some holdings have no market price yet'}
       </p>
       {error && <p className="lens-error">Couldn’t reach the network: {error}</p>}
+      {series && series.values.length > 2 ? (
+        <div className="lens-chart">
+          <LineChart values={series.values} marks={series.marks} height={170} step />
+          <span className="chart-note mono">After each step, at today’s prices{series.marks.length ? ' · dots are trades' : ''}</span>
+        </div>
+      ) : (
+        synced && <div className="lens-chart empty mono">Your chart starts with your first few steps.</div>
+      )}
       {onGo && !viewOnly && (
         <div className="lens-actions">
           <button className="btn light" onClick={() => onGo('trade', 'buy')}>
-            <I.Plus width={18} height={18} /> Buy a stock
+            Buy a stock
           </button>
           <button className="btn glass" onClick={() => onGo('move', 'add')}>
-            <I.ArrowDown width={18} height={18} /> Add money
+            Add money
           </button>
           <button className="btn glass" onClick={() => onGo('move', 'send')}>
-            <I.ArrowUpRight width={18} height={18} /> Send
+            Send
           </button>
           <button className="btn glass" onClick={() => onGo('agents')}>
-            <I.Agent width={18} height={18} /> Agents
+            New agent
           </button>
         </div>
       )}
@@ -68,8 +78,45 @@ export function BalanceCard({ net, balances, prices, synced, error, viewOnly, on
   );
 }
 
+const HUES = ['#3b4a8a', '#1f6a5a', '#8a5a1e', '#8f2b2b', '#4b3a7a', '#2f5f8f', '#6a4a2a', '#2c5a3a'];
+const hueOf = (sym = '') => HUES[[...sym].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
+
 export function Ticker({ asset }) {
-  return <span className={`ticker mono ${asset?.cash ? 'cash' : ''}`}>{asset?.cash ? '$' : asset?.symbol?.slice(0, 4)}</span>;
+  return (
+    <span className={`ticker mono ${asset?.cash ? 'cash' : ''}`} style={asset?.cash ? undefined : { background: hueOf(asset?.symbol) }}>
+      {asset?.cash ? '$' : asset?.symbol?.slice(0, 4)}
+    </span>
+  );
+}
+
+/** The listed stocks with their live Uniswap price. */
+export function Markets({ net, prices, balances, on, onPick, disabled }) {
+  const stocks = net.assets.filter((a) => !a.cash);
+  return (
+    <section className="card pad markets">
+      <div className="card-head">
+        <h3>Markets</h3>
+        <span className="label">{net.testPools ? 'Live · test pools' : 'Live · Uniswap'}</span>
+      </div>
+      <div className="mkt-list">
+        {stocks.map((s) => {
+          const p = prices[s.address.toLowerCase()];
+          const mine = balances?.[s.address.toLowerCase()] ?? 0n;
+          const Tag = onPick ? 'button' : 'div';
+          return (
+            <Tag key={s.address} className={`mkt ${on === s.address ? 'on' : ''}`} disabled={onPick ? disabled || p == null : undefined} onClick={onPick ? () => onPick(s.address) : undefined}>
+              <Ticker asset={s} />
+              <span className="grow">
+                <b>{s.symbol}</b>
+                <small>{mine > 0n ? `You hold ${amt(mine, s)}` : s.name}</small>
+              </span>
+              <span className="mkt-px num mono">{p == null ? '—' : p.toFixed(2)}</span>
+            </Tag>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export function Holdings({ net, balances, prices, synced }) {
@@ -78,7 +125,7 @@ export function Holdings({ net, balances, prices, synced }) {
     <section className="card pad">
       <div className="card-head">
         <h3>Holdings</h3>
-        <span className="hint">Prices from Uniswap{net.testPools ? ' test pools' : ''}</span>
+        <span className="label">Private</span>
       </div>
       {!synced ? (
         <p className="muted">Reading the pool…</p>
@@ -127,7 +174,13 @@ export function Explorer({ relayer, onGo }) {
         {rows.map(([what, seen]) => (
           <div className="tr" key={what}>
             <span className="grow">{what}</span>
-            <span className={`seen ${seen === 'Hidden' || seen === 'The relayer' ? 'hidden' : ''}`}>{seen}</span>
+            {seen === 'Hidden' ? (
+              <span className="seen dots" aria-label="Hidden">
+                ••••••
+              </span>
+            ) : (
+              <span className={`seen ${seen === 'The relayer' ? 'hidden' : ''}`}>{seen}</span>
+            )}
           </div>
         ))}
       </div>
@@ -167,7 +220,7 @@ export function Activity({ net, history, synced }) {
     <section className="card pad">
       <div className="card-head">
         <h3>Activity</h3>
-        <span className="hint">Only you see this list</span>
+        <span className="label">Only you see this list</span>
       </div>
       {!synced ? (
         <p className="muted">Reading the pool…</p>
@@ -273,5 +326,76 @@ export function Keys({ keys }) {
         </button>
       </div>
     </section>
+  );
+}
+
+const EVERY = { 604800: 'a week', 86400: 'a day', 3600: 'an hour' };
+
+/** The agents this account made, from their memos: what each may buy and its plan. */
+export function AgentsGlance({ net, wallet, synced, tick, onGo }) {
+  const agents = synced ? wallet.agents() : [];
+  const cash = cashOf(net);
+  return (
+    <section className="card pad">
+      <div className="card-head">
+        <h3>Agents</h3>
+        {onGo && (
+          <button className="link sm" onClick={() => onGo('agents')}>
+            {agents.length ? 'Manage' : 'New agent'}
+          </button>
+        )}
+      </div>
+      {!synced ? (
+        <p className="muted sm">Reading the pool…</p>
+      ) : !agents.length ? (
+        <div className="glance-empty">
+          <img src="/agent-mid.webp" alt="" />
+          <p className="muted sm">An agent buys stocks for you on a schedule, inside rules a proof checks on every trade. It can’t take money out.</p>
+        </div>
+      ) : (
+        <div className="table">
+          {agents.map((m) => {
+            const syms = m.rules.assets
+              .slice(1)
+              .filter((a) => a !== 0n)
+              .map((a) => assetOf(net, '0x' + a.toString(16).padStart(40, '0'))?.symbol)
+              .filter(Boolean);
+            const sells = Number(m.plan.takeProfitBps) || Number(m.plan.stopLossBps);
+            return (
+              <div className="tr" key={m.index}>
+                <img src="/agent-mid.webp" alt="" className="glance-face" />
+                <span className="grow">
+                  <b>{m.name || `Agent ${m.index + 1}`}</b>
+                  <span className="muted sm num">
+                    {usd(Number(m.plan.amount) / 10 ** cash.decimals)} {EVERY[Number(m.plan.every)] ?? 'a round'} · {syms.join(' · ')}
+                  </span>
+                </span>
+                <span className={`state ${Number(m.rules.endsAt) * 1000 > Date.now() ? 'on' : ''}`}>{sells ? 'Buys and sells' : 'Buys'}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The Portfolio desk: markets and holdings, the balance and activity, agents and what the explorer sees. */
+export function Desk({ net, wallet, balances, prices, synced, relayer, history, syncError, session, tick, onGo }) {
+  return (
+    <div className="desk3">
+      <div className="col">
+        <Markets net={net} prices={prices} balances={balances} onPick={onGo ? () => onGo('trade', 'buy') : null} />
+        <Holdings net={net} balances={balances} prices={prices} synced={synced} />
+      </div>
+      <div className="col">
+        <BalanceCard net={net} balances={balances} prices={prices} synced={synced} error={syncError} viewOnly={session.viewOnly} onGo={onGo} history={history} />
+        <Activity net={net} history={history} synced={synced} />
+      </div>
+      <div className="col">
+        <AgentsGlance net={net} wallet={wallet} synced={synced} tick={tick} onGo={onGo} />
+        <Explorer relayer={relayer} onGo={onGo} />
+      </div>
+    </div>
   );
 }

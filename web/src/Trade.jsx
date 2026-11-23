@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
 import { amountSold } from '@tint/sdk';
-import { cashOf, quote, swapFeeBps } from './chain.js';
+import { cashOf, priceHistory, quote, swapFeeBps } from './chain.js';
 import { ensureAllowance, relayerFee, runAction, tokenBalance } from './engine.js';
-import { amt, friendly, parseAmount, short, usd } from './format.js';
-import { Money, Ticker } from './parts.jsx';
+import { amt, friendly, parseAmount, short, toNumber, usd } from './format.js';
+import { LineChart } from './chart.jsx';
+import { Markets, Money, Ticker } from './parts.jsx';
 
 const TABS = [
   ['buy', 'Buy'],
@@ -368,30 +369,9 @@ export default function Trade({ net, wallet, session, address, balances, prices,
 
   if (isSwap || tabs.includes('buy')) {
     return (
-      <div className="desk">
-        <section className="card pad markets">
-          <div className="card-head">
-            <h3>Markets</h3>
-            <span className="hint">{net.testPools ? 'Test pools Tint seeded' : 'Uniswap on Robinhood Chain'}</span>
-          </div>
-          <div className="table">
-            {stocks.map((s) => {
-              const p = prices[s.address.toLowerCase()];
-              const mine = held(s);
-              return (
-                <button key={s.address} className={`tr market ${s.address === stockAddr ? 'on' : ''}`} disabled={busy || p == null} onClick={() => setStockAddr(s.address)}>
-                  <Ticker asset={s} />
-                  <span className="grow">
-                    <b>{s.symbol}</b>
-                    <span className="muted sm">{mine > 0n ? `You hold ${amt(mine, s)}` : s.name}</span>
-                  </span>
-                  <Money value={p} className="right" />
-                </button>
-              );
-            })}
-          </div>
-          {net.testPools && <p className="fine">Testnet has Robinhood’s test stock tokens but no real markets, so these are small pools at set prices. Trades move them.</p>}
-        </section>
+      <div className="desk3 trade-desk">
+        <Markets net={net} prices={prices} balances={balances} on={stockAddr} onPick={setStockAddr} disabled={busy} />
+        <StockPanel net={net} stock={stock} price={price} held={held(stock)} tick={run?.stage === 'done' ? run.hash : null} />
         {ticket}
       </div>
     );
@@ -402,6 +382,63 @@ export default function Trade({ net, wallet, session, address, balances, prices,
       {ticket}
       <MoveNote tab={tab} relayed={relayed} />
     </div>
+  );
+}
+
+// The stock's real trade history on its Uniswap pools, and what you hold of it.
+function StockPanel({ net, stock, price, held, tick }) {
+  const [hist, setHist] = useState(null); // [{ block, price }] | 'error'
+  useEffect(() => {
+    let stop = false;
+    setHist(null);
+    priceHistory(net, stock)
+      .then((h) => !stop && setHist(h))
+      .catch(() => !stop && setHist('error'));
+    return () => {
+      stop = true;
+    };
+  }, [net, stock, tick]);
+  const all = Array.isArray(hist) ? [...hist.map((h) => h.price), ...(price != null ? [price] : [])] : [];
+  const every = Math.ceil(all.length / 400); // a busy pool has thousands of swaps; draw at most ~400 points
+  const values = every > 1 ? all.filter((_, i) => i % every === 0 || i === all.length - 1) : all;
+  const firstPrice = values[0];
+  const change = firstPrice && price != null ? (price - firstPrice) / firstPrice : null;
+  const trades = Array.isArray(hist) ? hist.length : 0;
+  return (
+    <section className="card pad stock-panel">
+      <div className="row gap">
+        <Ticker asset={stock} />
+        <span className="grow">
+          <b className="stock-sym">{stock.symbol}</b>
+          <span className="muted sm">{stock.name}</span>
+        </span>
+        <span className="label">{net.testPools ? 'Uniswap test pool' : 'Uniswap'}</span>
+      </div>
+      <div className="row gap wrap stock-num">
+        <span className="big num">{price == null ? '—' : price.toFixed(2)}</span>
+        {change != null && trades > 0 && (
+          <span className={`mono ${change >= 0 ? 'up' : 'down'}`}>
+            {change >= 0 ? '+' : '−'}
+            {Math.abs(change * 100).toFixed(2)}% over the last {trades} trade{trades === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+      {hist === null ? (
+        <div className="chart-empty mono">Reading the pool’s trades…</div>
+      ) : values.length > 1 ? (
+        <LineChart values={values} height={260} step />
+      ) : (
+        <div className="chart-empty mono">{hist === 'error' ? 'Couldn’t read the pool’s trades.' : 'No trades in this pool yet.'}</div>
+      )}
+      <span className="chart-note mono">The price after every swap on its USDG pools{net.testPools ? '. Test pools trade rarely' : ''}</span>
+      <div className="kv">
+        <span>You hold, privately</span>
+        <span className="num">
+          {amt(held, stock)} {stock.symbol}
+          {price != null && held > 0n && <span className="muted"> · {usd(toNumber(held, stock) * price)}</span>}
+        </span>
+      </div>
+    </section>
   );
 }
 
