@@ -81,10 +81,37 @@ export function BalanceCard({ net, balances, prices, synced, error, viewOnly, on
 const HUES = ['#3b4a8a', '#1f6a5a', '#8a5a1e', '#8f2b2b', '#4b3a7a', '#2f5f8f', '#6a4a2a', '#2c5a3a'];
 const hueOf = (sym = '') => HUES[[...sym].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
 
+// Company marks from Simple Icons (CC0), in /logos; each sits on its brand colour.
+// A stock with no mark here (SPY) keeps the lettered disc.
+const LOGOS = {
+  TSLA: { bg: '#cc0000' },
+  AMZN: { bg: '#232f3e', fg: '#ff9900' },
+  AMD: { bg: '#ed1c24' },
+  PLTR: { bg: '#ffffff', fg: '#101113' },
+  NFLX: { bg: '#000000', fg: '#e50914' },
+  NVDA: { bg: '#76b900' },
+  META: { bg: '#0467df' },
+  GOOGL: { bg: '#ffffff', fg: '#4285f4' },
+};
+const logoOf = (sym = '') => {
+  const key = sym.toUpperCase().replace(/[^A-Z]/g, '');
+  return LOGOS[key] ? { key, ...LOGOS[key] } : null;
+};
+
 export function Ticker({ asset }) {
+  if (asset?.cash) return <span className="ticker mono cash">$</span>;
+  const logo = logoOf(asset?.symbol);
+  if (logo) {
+    const mark = `url(/logos/${logo.key}.svg)`;
+    return (
+      <span className="ticker logo" style={{ background: logo.bg }} role="img" aria-label={asset.symbol}>
+        <i style={{ background: logo.fg ?? '#fff', WebkitMaskImage: mark, maskImage: mark }} />
+      </span>
+    );
+  }
   return (
-    <span className={`ticker mono ${asset?.cash ? 'cash' : ''}`} style={asset?.cash ? undefined : { background: hueOf(asset?.symbol) }}>
-      {asset?.cash ? '$' : asset?.symbol?.slice(0, 4)}
+    <span className="ticker mono" style={{ background: hueOf(asset?.symbol) }}>
+      {asset?.symbol?.slice(0, 4)}
     </span>
   );
 }
