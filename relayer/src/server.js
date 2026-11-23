@@ -201,11 +201,16 @@ async function readBody(req) {
   }
 }
 
+// Behind a hosting proxy (TRUST_PROXY=1) every request comes from the proxy, so
+// rate-limit by the first address it forwards instead.
+const clientIp = (req) =>
+  (env.TRUST_PROXY === '1' && String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()) || req.socket.remoteAddress;
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   try {
     if (req.method === 'OPTIONS') return reply(res, 204, {});
-    if (limited(req.socket.remoteAddress)) throw httpError(429, 'Too many requests. Wait a minute.');
+    if (limited(clientIp(req))) throw httpError(429, 'Too many requests. Wait a minute.');
     if (req.method === 'GET' && url.pathname === '/info') {
       return reply(res, 200, { relayer: account.address, chainId: CHAIN_ID, pool: POOL, feeUsd: FEE_USD });
     }
