@@ -6,7 +6,7 @@ You set the rules once: which stocks, how much a week, the most per trade, and u
 
 Under the agent is a private stock account: USDG and stock tokens in one balance that only you can read. You can also trade from it by hand, send from it and take money out.
 
-**Status:** the private account, the relayer and agents are deployed on **Robinhood Chain testnet** (chain 46630), with verified contracts, and the full agent loop has run there through the relayer ([below](#on-robinhood-chain-testnet)). Testnet uses Robinhood's own test stock tokens, traded on small test pools Tint seeded, with a test USDG. The same code also runs on a local fork of Robinhood mainnet with the real USDG, stocks and pools. Today's agent is auto-invest (a schedule you set, no AI model yet). Nothing is on mainnet yet, and the web app and relayer still run on your machine; see "Not built yet".
+**Status:** the private account, the relayer and agents are deployed on **Robinhood Chain testnet** (chain 46630), with verified contracts, and the full agent loop has run there through the relayer ([below](#on-robinhood-chain-testnet)). Testnet uses Robinhood's own test stock tokens, traded on small test pools Tint seeded, with a test USDG. The same code also runs on a local fork of Robinhood mainnet with the real USDG, stocks and pools. Today's agent is auto-invest (a schedule you set, no AI model yet). Nothing is on mainnet yet. **Live on testnet: [tint.nerom.site](https://tint.nerom.site)** (the web wallet) with the relayer hosted on Railway; the agent runner still runs where you start it, see "Not built yet".
 
 Plan: [PLAN.md](PLAN.md). Brand: [brand/BRAND.md](brand/BRAND.md).
 
@@ -99,7 +99,6 @@ At Robinhood Chain's 0.02 gwei, 4.5M gas is about 0.00009 ETH per action.
 **Not built yet:**
 - AI agents: a model that picks within the rules ("model suggests, code decides, proof enforces"). Today's agent follows a fixed plan.
 - A hosted runner: the runner runs where you start it.
-- Hosting: the web app, relayer and runner run on your machine (pointed at testnet or a fork); no public site yet.
 - Mainnet: Tint is not deployed on Robinhood Chain mainnet.
 - The Stylus tree.
 
@@ -108,6 +107,8 @@ See the phases in PLAN.md.
 **Trust model:** the pool owner can list tokens, set deposit caps, pause new deposits and set a swap fee of at most 1% (0 today). The owner can't move anyone's tokens, block withdrawals or touch notes. The code is unaudited, so caps stay low.
 
 ## On Robinhood Chain testnet
+
+**Hosted:** the web wallet is at [tint.nerom.site](https://tint.nerom.site) (a static build of [web/](web), proofs made in your browser), and the relayer runs on Railway at `relayer-production-cbfd1e1f.up.railway.app` ([relayer/Dockerfile](relayer/Dockerfile), deployed with [tools/deploy-relayer.sh](tools/deploy-relayer.sh)). On Nov 23 2026 the agent end-to-end script ran on testnet through the hosted relayer: fund an agent, two relayed `agentSwap` buys, then three relayed `agentTransact` sends back to the owner.
 
 Deployed Nov 19 2026 with [tools/testnet-deploy.sh](tools/testnet-deploy.sh); addresses in [contracts/deployments/46630.json](contracts/deployments/46630.json). Every contract's source is verified on the [testnet explorer](https://explorer.testnet.chain.robinhood.com).
 
